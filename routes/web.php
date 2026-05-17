@@ -17,6 +17,9 @@ Route::post('/organization/job-roles', [OrganizationController::class, 'storeJob
 
 Route::patch('/employees/{employee}/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
 Route::patch('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
+Route::get('/employees/{employee}/documents/create', [EmployeeController::class, 'createDocument'])->name('employees.documents.create');
+Route::post('/employees/{employee}/documents', [EmployeeController::class, 'storeDocument'])->name('employees.documents.store');
+Route::get('/employees/{employee}/timesheets', [EmployeeController::class, 'timesheets'])->name('employees.timesheets.index');
 Route::resource('employees', EmployeeController::class)->except(['destroy']);
 
 Route::get('/attendances/check', [AttendanceController::class, 'checkInOut'])->name('attendance.check');
@@ -38,12 +41,5 @@ Route::patch('/leaves/requests/{leaveRequest}/draft', [LeaveController::class, '
 Route::get('/leaves/settings', [LeaveController::class, 'settings'])->name('leaves.settings');
 Route::post('/leaves/settings', [LeaveController::class, 'updateSettings'])->name('leaves.settings.update');
 
-Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
-Route::get('/employees/create', [EmployeeController::class, 'create'])->name('employees.create');
-Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
-Route::get('/employees/{employee}', [EmployeeController::class, 'show'])->name('employees.show');
-Route::get('/employees/{employee}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
-Route::patch('/employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
-Route::delete('/employees/{employee}', [EmployeeController::class, 'destroy'])->name('employees.destroy');
 Route::get('/employees/view/{view}', [EmployeeController::class, 'view'])->name('employees.view');
 Route::post('/employees/bulk-action', [EmployeeController::class, 'bulkAction'])->name('employees.bulk-action');

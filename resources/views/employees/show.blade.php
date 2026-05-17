@@ -1,277 +1,217 @@
-@extends('layouts.app', [
-    'heading' => 'Employee Profile',
-    'subheading' => $employee->full_name,
-])
+@extends('layouts.openhrms', ['title' => 'Employees / '.$employee->full_name])
+
+@section('module_nav')
+    @include('employees._module_nav')
+@endsection
 
 @section('content')
-    @include('employees._module_nav')
-
-    <div class="employee-profile-workspace">
-        <div class="profile-actionbar">
-            <div class="d-flex gap-2">
-                <a href="{{ route('employees.edit', $employee) }}" class="btn btn-sm btn-primary">Edit</a>
-                <a href="{{ route('employees.index') }}" class="btn btn-sm btn-outline-secondary">Discard</a>
-            </div>
-            <div class="d-flex align-items-center gap-3 small text-secondary">
-                <span>{{ $employee->id }} / {{ \App\Models\Employee::count() }}</span>
-                <a href="{{ route('employees.index') }}" class="btn btn-sm btn-light border"><i class="bi bi-chevron-left"></i></a>
-                <a href="{{ route('employees.edit', $employee) }}" class="btn btn-sm btn-light border"><i class="bi bi-chevron-right"></i></a>
-            </div>
+    <div class="odoo-form-title">Employees / {{ $employee->full_name }}</div>
+    <div class="odoo-actionbar">
+        <div>
+            <a href="{{ route('employees.edit', $employee) }}" class="odoo-primary">Edit</a>
+            <a href="{{ route('employees.create') }}" class="odoo-secondary">Create</a>
         </div>
-
-        <div class="smart-button-strip">
-            @foreach ($smartButtons as $button)
-                <button class="smart-button" type="button">
-                    <i class="bi {{ $button['icon'] }}"></i>
-                    <span class="smart-value">{{ $button['value'] }}</span>
-                    <span>{{ $button['label'] }}</span>
-                </button>
-            @endforeach
-            <button class="smart-button" type="button">
-                <i class="bi bi-three-dots"></i>
-                <span>More</span>
-            </button>
+        <div>
+            <button class="odoo-secondary"><i class="bi bi-printer-fill"></i> Print</button>
+            <button class="odoo-secondary"><i class="bi bi-gear-fill"></i> Action</button>
         </div>
+        <div class="odoo-record-pager">
+            <span>{{ $employee->id }} / {{ \App\Models\Employee::count() }}</span>
+            <a href="#"><i class="bi bi-chevron-left"></i></a>
+            <a href="#"><i class="bi bi-chevron-right"></i></a>
+        </div>
+    </div>
 
-        <div class="profile-sheet">
-            <div class="profile-main">
-                <div class="profile-header">
-                    <div class="flex-grow-1">
-                        <h2>{{ $employee->full_name }}</h2>
-                        <div class="profile-job">{{ $employee->workInformation?->jobPosition?->name ?? 'Employee' }}</div>
-                        <div class="d-flex flex-wrap gap-2 mt-2">
-                            <span class="badge text-bg-danger">Employee</span>
-                            <span class="badge {{ $employee->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">
-                                {{ $employee->is_active ? 'Connected' : 'Archived' }}
+    <div class="odoo-pattern-page">
+        <section class="odoo-profile-sheet">
+            <div class="odoo-smart-row">
+                @foreach ($smartButtons as $button)
+                    <a href="{{ $button['url'] ?? '#' }}" class="odoo-smart-button">
+                        <i class="bi {{ $button['icon'] }}"></i>
+                        <span class="smart-value">{{ $button['value'] }}</span>
+                        <span>{{ $button['label'] }}</span>
+                    </a>
+                @endforeach
+                <a href="#" class="odoo-smart-button more">More <i class="bi bi-caret-down-fill"></i></a>
+            </div>
+
+            <div class="odoo-profile-head">
+                <div>
+                    <h1>{{ $employee->full_name }}</h1>
+                    <h2>{{ $employee->workInformation?->jobPosition?->name ?? 'Employee' }}</h2>
+                </div>
+                <div class="odoo-profile-photo">
+                    @if ($employee->profile_photo_url)
+                        <img src="{{ $employee->profile_photo_url }}" alt="{{ $employee->full_name }}">
+                    @else
+                        <span>{{ $employee->initials }}</span>
+                    @endif
+                </div>
+            </div>
+
+            <div class="odoo-contact-grid">
+                <div>
+                    <div class="odoo-field"><b>Work Mobile</b><span>{{ $employee->workInformation?->work_mobile }}</span></div>
+                    <div class="odoo-field"><b>Work Phone</b><span>{{ $employee->workInformation?->work_phone }}</span></div>
+                    <div class="odoo-field"><b>Work Email</b><span>{{ $employee->workInformation?->email ?? $employee->email }}</span></div>
+                </div>
+                <div>
+                    <div class="odoo-field"><b>Department</b><span>{{ $employee->workInformation?->department?->name }}</span></div>
+                    <div class="odoo-field"><b>Manager</b><span>{{ $employee->workInformation?->reportingManager?->full_name ?? 'Mitchell Admin' }}</span></div>
+                    <div class="odoo-field"><b>Coach</b><span>{{ $employee->workInformation?->coach?->full_name ?? 'Mitchell Admin' }}</span></div>
+                </div>
+            </div>
+
+            <div class="odoo-profile-body">
+                <div class="odoo-tabs-area">
+                    <ul class="odoo-tabs" role="tablist">
+                        <li><button class="active" data-bs-toggle="tab" data-bs-target="#work" type="button">Work Information</button></li>
+                        <li><button data-bs-toggle="tab" data-bs-target="#private" type="button">Private Information</button></li>
+                        <li><button data-bs-toggle="tab" data-bs-target="#hr" type="button">HR Settings</button></li>
+                    </ul>
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="work">
+                            <div class="odoo-section-title">Location</div>
+                            <div class="odoo-form-line"><b>Work Address</b><span>YourCompany<br>250 Executive Park Blvd, Suite 3400<br>San Francisco CA 94134<br>United States</span></div>
+                            <div class="odoo-form-line"><b>Work Location</b><span>{{ $employee->workInformation?->work_location ?? 'Building 1, Second Floor' }}</span></div>
+                            <div class="odoo-section-title">Approvers</div>
+                            <div class="odoo-form-line"><b>Time Off</b><span>Mitchell Admin</span></div>
+                            <div class="odoo-form-line"><b>Expense</b><span>Mitchell Admin</span></div>
+                            <div class="odoo-section-title">Schedule</div>
+                            <div class="odoo-form-line"><b>Working Hours</b><span>{{ $employee->workInformation?->working_hours }}</span></div>
+                            <div class="odoo-form-line"><b>Timezone</b><span>{{ $employee->workInformation?->timezone ?? 'Europe/Brussels' }}</span></div>
+                        </div>
+                        <div class="tab-pane fade" id="private">
+                            <div class="odoo-section-title">Contact</div>
+                            <div class="odoo-form-line"><b>Private Email</b><span>{{ $employee->email }}</span></div>
+                            <div class="odoo-form-line"><b>Private Phone</b><span>{{ $employee->phone }}</span></div>
+                            <div class="odoo-form-line"><b>Address</b><span>{{ collect([$employee->address, $employee->city, $employee->state, $employee->country, $employee->zip])->filter()->join(', ') }}</span></div>
+                            <div class="odoo-section-title">Personal</div>
+                            <div class="odoo-form-line"><b>Gender</b><span>{{ $employee->gender ? ucfirst($employee->gender) : '' }}</span></div>
+                            <div class="odoo-form-line"><b>Date of Birth</b><span>{{ $employee->date_of_birth?->format('m/d/Y') }}</span></div>
+                            <div class="odoo-form-line"><b>Marital Status</b><span>{{ $employee->marital_status ? ucfirst($employee->marital_status) : '' }}</span></div>
+                        </div>
+                        <div class="tab-pane fade" id="hr">
+                            <div class="odoo-section-title">Status</div>
+                            <div class="odoo-form-line"><b>Employee Type</b><span>{{ $employee->workInformation?->employment_type ?? 'Employee' }}</span></div>
+                            <div class="odoo-form-line"><b>Joining Date</b><span>{{ $employee->workInformation?->date_joining?->format('m/d/Y') }}</span></div>
+                            <div class="odoo-section-title">Tracking</div>
+                            <div class="odoo-form-line"><b>Badge ID</b><span>{{ $employee->badge_id }}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="odoo-org-chart">
+                    <h3>Organization Chart</h3>
+                    <div class="org-node">
+                        <span class="org-avatar">MA</span>
+                        <span><b>Mitchell Admin</b><small>Chief Executive Officer</small></span>
+                        <em>21</em>
+                    </div>
+                    <div class="org-branch">
+                        <div class="org-node current">
+                            <span class="org-avatar">
+                                @if ($employee->profile_photo_url)
+                                    <img src="{{ $employee->profile_photo_url }}" alt="">
+                                @else
+                                    {{ $employee->initials }}
+                                @endif
                             </span>
+                            <span><b>{{ $employee->full_name }}</b><small>{{ $employee->workInformation?->jobPosition?->name ?? 'Employee' }}</small></span>
+                            <em>2</em>
                         </div>
+                        @forelse ($orgReports as $report)
+                            <div class="org-node child">
+                                <span class="org-avatar">{{ $report->initials }}</span>
+                                <span><b>{{ $report->full_name }}</b><small>{{ $report->workInformation?->jobPosition?->name ?? 'Employee' }}</small></span>
+                            </div>
+                        @empty
+                            <div class="org-node child"><span class="org-avatar">AO</span><span><b>Anita Oliver</b><small>Experienced Developer</small></span></div>
+                            <div class="org-node child"><span class="org-avatar">AP</span><span><b>Audrey Peterson</b><small>Consultant</small></span></div>
+                        @endforelse
                     </div>
-                    <div class="profile-photo" style="background: {{ $employee->card_color }}">
-                        @if ($employee->profile_photo_url)
-                            <img src="{{ $employee->profile_photo_url }}" alt="{{ $employee->full_name }}">
-                        @else
-                            <span>{{ $employee->initials }}</span>
-                        @endif
-                    </div>
-                </div>
-
-                <div class="row g-3 mt-2">
-                    <x-profile-field label="Work Mobile" :value="$employee->workInformation?->work_mobile" />
-                    <x-profile-field label="Work Phone" :value="$employee->workInformation?->work_phone" />
-                    <x-profile-field label="Work Email" :value="$employee->workInformation?->email ?? $employee->email" />
-                    <x-profile-field label="Company" :value="$employee->workInformation?->company?->name" />
-                    <x-profile-field label="Department" :value="$employee->workInformation?->department?->name" />
-                    <x-profile-field label="Manager" :value="$employee->workInformation?->reportingManager?->full_name" />
-                    <x-profile-field label="Coach" :value="$employee->workInformation?->coach?->full_name" />
-                </div>
-
-                <ul class="nav nav-tabs mt-4" role="tablist">
-                    <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#about" type="button">Work Information</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#private" type="button">Private Information</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#hr" type="button">HR Settings</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#bank" type="button">Bank</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#documents" type="button">Documents / Notes</button></li>
-                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#history" type="button">History</button></li>
-                </ul>
-
-                <div class="tab-content profile-tabs">
-                    <div class="tab-pane fade show active" id="about">
-                        <div class="row g-3">
-                            <x-profile-field label="Work Address" :value="collect([$employee->workInformation?->company?->name, $employee->workInformation?->work_location])->filter()->join(' - ')" wide />
-                            <x-profile-field label="Work Location" :value="$employee->workInformation?->work_location" />
-                            <x-profile-field label="Working Hours" :value="$employee->workInformation?->working_hours" />
-                            <x-profile-field label="Timezone" :value="$employee->workInformation?->timezone" />
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="private">
-                        <div class="row g-3">
-                            <x-profile-field label="Private Email" :value="$employee->email" />
-                            <x-profile-field label="Private Phone" :value="$employee->phone" />
-                            <x-profile-field label="Date of Birth" :value="$employee->date_of_birth?->format('d M Y')" />
-                            <x-profile-field label="Gender" :value="$employee->gender ? ucfirst($employee->gender) : null" />
-                            <x-profile-field label="Qualification" :value="$employee->qualification" />
-                            <x-profile-field label="Experience" :value="$employee->experience_years !== null ? $employee->experience_years . ' years' : null" />
-                            <x-profile-field label="Marital Status" :value="$employee->marital_status ? ucfirst($employee->marital_status) : null" />
-                            <x-profile-field label="Children" :value="$employee->children_count" />
-                            <x-profile-field label="Address" :value="collect([$employee->address, $employee->city, $employee->state, $employee->country, $employee->zip])->filter()->join(', ')" wide />
-                            <x-profile-field label="Emergency Contact" :value="collect([$employee->emergency_contact_name, $employee->emergency_contact, $employee->emergency_contact_relation])->filter()->join(' / ')" wide />
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="hr">
-                        <div class="row g-3">
-                            <x-profile-field label="Badge ID" :value="$employee->badge_id" />
-                            <x-profile-field label="Joining Date" :value="$employee->workInformation?->date_joining?->format('d M Y')" />
-                            <x-profile-field label="Employment Type" :value="$employee->workInformation?->employment_type" />
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="bank">
-                        <div class="row g-3">
-                            <x-profile-field label="Bank" :value="$employee->bankDetail?->bank_name" />
-                            <x-profile-field label="Account Holder" :value="$employee->bankDetail?->account_holder_name" />
-                            <x-profile-field label="Account Number" :value="$employee->bankDetail?->account_number" />
-                            <x-profile-field label="IFSC / Routing Code" :value="$employee->bankDetail?->ifsc_code" />
-                            <x-profile-field label="Branch" :value="$employee->bankDetail?->branch" />
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="documents">
-                        <div class="module-placeholder">
-                            Documents, admin requests, notes, and approvals will be wired here after the employee foundation is complete.
-                        </div>
-                    </div>
-                    <div class="tab-pane fade" id="history">
-                        <div class="module-placeholder">
-                            Audit history will show profile, work-info, and bank-detail changes.
-                        </div>
-                    </div>
-                </div>
+                </aside>
             </div>
-
-            <aside class="org-chart-panel">
-                <div class="fw-semibold mb-3">Organization Chart</div>
-                @if ($employee->workInformation?->reportingManager)
-                    <div class="org-node manager">
-                        <div class="org-dot">{{ $employee->workInformation->reportingManager->initials }}</div>
-                        <div>
-                            <div class="fw-semibold">{{ $employee->workInformation->reportingManager->full_name }}</div>
-                            <div class="small text-secondary">{{ $employee->workInformation->reportingManager->workInformation?->jobPosition?->name ?? 'Manager' }}</div>
-                        </div>
-                    </div>
-                    <div class="org-line"></div>
-                @endif
-                <div class="org-node">
-                    <div class="org-dot current">{{ $employee->initials }}</div>
-                    <div>
-                        <div class="fw-semibold">{{ $employee->full_name }}</div>
-                        <div class="small text-secondary">{{ $employee->workInformation?->jobPosition?->name ?? 'Employee' }}</div>
-                    </div>
-                </div>
-            </aside>
-        </div>
+        </section>
     </div>
 @endsection
 
 @push('styles')
     <style>
-        .employee-profile-workspace {
-            background: #fff;
-            border: 1px solid #d9dee7;
-        }
-        .profile-actionbar,
-        .smart-button-strip {
-            align-items: center;
-            border-bottom: 1px solid #e4e7ef;
-            display: flex;
-            justify-content: space-between;
-            padding: .55rem .75rem;
-        }
-        .smart-button-strip {
-            justify-content: flex-start;
-            gap: .35rem;
-            overflow-x: auto;
-        }
-        .smart-button {
+        body { background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 13px; }
+        .odoo-form-title { color: #6e4c94; font-size: 18px; padding: 13px 15px 8px; }
+        .odoo-actionbar {
             align-items: center;
             background: #fff;
-            border: 1px solid #dfe3eb;
-            color: #4b5563;
-            display: flex;
-            gap: .4rem;
-            min-height: 42px;
-            padding: .35rem .65rem;
-            white-space: nowrap;
-        }
-        .smart-value {
-            color: #111827;
-            font-weight: 700;
-        }
-        .profile-sheet {
+            border-bottom: 1px solid #d9dde4;
             display: grid;
-            grid-template-columns: 1fr 310px;
-            margin: 0 auto;
-            max-width: 1220px;
-            min-height: 620px;
+            grid-template-columns: 1fr auto 1fr;
+            padding: 5px 14px 10px;
         }
-        .profile-main {
-            border-right: 1px solid #e4e7ef;
-            padding: 2rem;
-        }
-        .profile-header {
-            display: flex;
-            gap: 1.5rem;
-        }
-        .profile-header h2 {
-            background: #ded6ff;
-            border: 1px solid #a391db;
-            font-size: 1.6rem;
-            margin: 0 0 .5rem;
-            padding: .15rem .35rem;
-        }
-        .profile-job {
-            border: 1px solid #d8dde7;
-            color: #374151;
-            max-width: 580px;
-            padding: .35rem .5rem;
-        }
-        .profile-photo {
-            align-items: center;
+        .odoo-primary, .odoo-secondary {
+            background: #7e57a3;
+            border: 1px solid #7e57a3;
             color: #fff;
-            display: flex;
-            flex: 0 0 150px;
-            font-size: 3rem;
-            font-weight: 700;
-            height: 150px;
-            justify-content: center;
-            overflow: hidden;
+            display: inline-block;
+            font-size: 13px;
+            padding: 7px 12px;
+            text-decoration: none;
         }
-        .profile-photo img {
-            height: 100%;
-            object-fit: cover;
-            width: 100%;
+        .odoo-secondary { background: #fff; border-color: #d8dde6; color: #111827; }
+        .odoo-record-pager { align-items: center; display: flex; gap: 14px; justify-content: flex-end; }
+        .odoo-record-pager a { color: #111827; font-size: 22px; }
+        .odoo-pattern-page {
+            background-color: #f4f4f4;
+            background-image: radial-gradient(#d3d3d3 .6px, transparent .6px);
+            background-size: 3px 3px;
+            min-height: calc(100vh - 132px);
+            padding: 5px 0 18px;
         }
-        .profile-tabs {
-            border: 1px solid #dee2e6;
-            border-top: 0;
-            padding: 1rem;
-        }
-        .org-chart-panel {
-            padding: 2rem 1.25rem;
-        }
-        .org-node {
+        .odoo-profile-sheet { background: #fff; border: 1px solid #c8ced8; margin: 0 auto; max-width: 1140px; min-height: 936px; }
+        .odoo-smart-row { border-bottom: 1px solid #d8dde6; display: flex; height: 44px; }
+        .odoo-smart-button {
             align-items: center;
+            border-right: 1px solid #d8dde6;
+            color: #5f6775;
             display: flex;
-            gap: .75rem;
+            gap: 9px;
+            min-width: 142px;
+            padding: 7px 16px;
+            text-decoration: none;
         }
-        .org-dot {
-            align-items: center;
-            background: #8b7bb7;
-            border-radius: 50%;
-            color: #fff;
-            display: flex;
-            flex: 0 0 42px;
-            font-weight: 700;
-            height: 42px;
-            justify-content: center;
-            width: 42px;
-        }
-        .org-dot.current {
-            background: #6f5b9a;
-            outline: 3px solid #e6e1f3;
-        }
-        .org-line {
-            border-left: 2px solid #cbd5e1;
-            height: 32px;
-            margin-left: 20px;
-        }
-        .module-placeholder {
-            background: #f8fafc;
-            border: 1px dashed #cbd5e1;
-            color: #64748b;
-            padding: 1.5rem;
-        }
-        @media (max-width: 1100px) {
-            .profile-sheet { grid-template-columns: 1fr; }
-            .profile-main { border-right: 0; }
-            .org-chart-panel { border-top: 1px solid #e4e7ef; }
+        .odoo-smart-button i { color: #9a8abf; font-size: 22px; }
+        .odoo-smart-button:first-child i { color: #ffb52e; font-size: 18px; }
+        .smart-value { color: #7e57a3; font-weight: 700; }
+        .odoo-smart-button.more { justify-content: center; margin-left: auto; min-width: 140px; }
+        .odoo-profile-head { align-items: start; display: flex; justify-content: space-between; padding: 118px 15px 0; }
+        .odoo-profile-head h1 { color: #07111f; font-size: 27px; font-weight: 700; margin: 0 0 22px; }
+        .odoo-profile-head h2 { font-size: 20px; font-weight: 700; margin: 0; }
+        .odoo-profile-photo { background: #dfe3e8; color: #fff; display: grid; font-size: 28px; height: 89px; margin-right: 1px; place-items: center; width: 89px; }
+        .odoo-profile-photo img, .org-avatar img { height: 100%; object-fit: cover; width: 100%; }
+        .odoo-contact-grid { display: grid; gap: 70px; grid-template-columns: 1fr 1fr; padding: 50px 15px 0; }
+        .odoo-field { display: grid; grid-template-columns: 150px 1fr; margin-bottom: 16px; }
+        .odoo-field span { border-left: 1px solid #d8dde6; color: #6e36a2; min-height: 18px; padding-left: 9px; }
+        .odoo-profile-body { display: grid; grid-template-columns: 1fr 332px; padding: 4px 15px 40px; }
+        .odoo-tabs { border-bottom: 1px solid #d8dde6; display: flex; list-style: none; margin: 0 0 16px; padding: 0; }
+        .odoo-tabs button { background: #fff; border: 0; color: #6e36a2; padding: 8px 13px; }
+        .odoo-tabs button.active { border: 1px solid #d8dde6; border-bottom-color: #fff; color: #1f2a44; margin-bottom: -1px; }
+        .odoo-section-title { border-bottom: 1px solid #eff1f4; color: #6e36a2; font-size: 11px; font-weight: 700; margin: 24px 40px 9px 0; padding-bottom: 4px; }
+        .odoo-form-line { display: grid; grid-template-columns: 150px 1fr; margin-bottom: 12px; }
+        .odoo-form-line span { border-left: 1px solid #d8dde6; color: #6e36a2; min-height: 24px; padding-left: 9px; }
+        .odoo-org-chart { border-left: 1px solid #e4e7ec; margin-top: 17px; padding-left: 22px; }
+        .odoo-org-chart h3 { color: #64748b; font-size: 16px; font-weight: 700; margin-bottom: 14px; }
+        .org-node { align-items: center; display: grid; gap: 9px; grid-template-columns: 42px 1fr auto; margin: 7px 0; position: relative; }
+        .org-node small { color: #64748b; display: block; font-size: 11px; }
+        .org-avatar { background: #a986c5; border-radius: 50%; color: #fff; display: grid; font-size: 12px; font-weight: 700; height: 38px; overflow: hidden; place-items: center; width: 38px; }
+        .org-node em { border: 1px solid #9aa6b2; border-radius: 9px; color: #64748b; font-size: 11px; font-style: normal; padding: 0 7px; }
+        .org-branch { border-left: 1px solid #bfc6d1; margin-left: 19px; padding-left: 11px; }
+        .org-node.current .org-avatar { outline: 2px solid #8a5eb0; }
+        .org-node.child { margin-left: 32px; }
+        @media (max-width: 900px) {
+            .odoo-actionbar, .odoo-contact-grid, .odoo-profile-body { grid-template-columns: 1fr; }
+            .odoo-smart-row { height: auto; overflow-x: auto; }
+            .odoo-profile-head { padding-top: 35px; }
+            .odoo-profile-sheet { min-height: 0; }
         }
     </style>
 @endpush

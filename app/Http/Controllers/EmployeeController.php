@@ -28,7 +28,9 @@ class EmployeeController extends Controller
                     $query->where('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhere('badge_id', 'like', "%{$search}%");
+                        ->orWhere('badge_id', 'like', "%{$search}%")
+                        ->orWhereHas('workInformation.department', fn ($query) => $query->where('name', 'like', "%{$search}%"))
+                        ->orWhereHas('workInformation.jobPosition', fn ($query) => $query->where('name', 'like', "%{$search}%"));
                 });
             })
             ->when($request->filled('company_id'), function ($query) use ($request): void {
@@ -44,8 +46,8 @@ class EmployeeController extends Controller
             ->when($request->string('status')->toString() !== '', function ($query) use ($request): void {
                 $query->where('is_active', $request->string('status')->toString() === 'active');
             })
-            ->latest()
-            ->paginate(15)
+            ->orderBy('first_name')
+            ->paginate(24)
             ->withQueryString();
 
         return view('employees.index', [
@@ -105,6 +107,48 @@ class EmployeeController extends Controller
         return view('employees.show', [
             'employee' => $employee,
             'smartButtons' => $this->smartButtons($employee),
+            'orgReports' => Employee::with('workInformation.jobPosition')
+                ->whereHas('workInformation', fn ($query) => $query->where('reporting_manager_id', $employee->id))
+                ->orderBy('first_name')
+                ->take(3)
+                ->get(),
+        ]);
+    }
+
+    public function createDocument(Employee $employee): View
+    {
+        $employee->load('workInformation.jobPosition');
+
+        return view('employees.documents-create', [
+            'employee' => $employee,
+        ]);
+    }
+
+    public function storeDocument(Request $request, Employee $employee): RedirectResponse
+    {
+        $request->validate([
+            'document_number' => ['nullable', 'string', 'max:100'],
+            'issue_date' => ['nullable', 'date'],
+            'expiry_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
+            'notification_type' => ['nullable', 'string', 'max:80'],
+            'days' => ['nullable', 'integer', 'min:0'],
+            'description' => ['nullable', 'string'],
+        ]);
+
+        return redirect()->route('employees.show', $employee)->with('status', 'Document draft saved.');
+    }
+
+    public function timesheets(Employee $employee): View
+    {
+        $employee->load('workInformation.jobPosition');
+
+        return view('employees.timesheets', [
+            'employee' => $employee,
+            'timesheets' => [
+                ['date' => '02/10/2022', 'project' => 'Research & Development', 'task' => 'Unit Testing', 'description' => 'Requirements analysis', 'hours' => '03:00'],
+                ['date' => '02/05/2022', 'project' => 'Office Design', 'task' => 'Room 2: Decoration', 'description' => 'Requirements analysis', 'hours' => '02:00'],
+            ],
+            'totalHours' => '05:00',
         ]);
     }
 
@@ -268,11 +312,12 @@ class EmployeeController extends Controller
     private function smartButtons(Employee $employee): array
     {
         return [
+            ['label' => 'Not Connected', 'value' => '', 'icon' => 'bi-circle-fill'],
             ['label' => 'Contracts', 'value' => 0, 'icon' => 'bi-file-earmark-text'],
-            ['label' => 'Time Off', 'value' => 0, 'icon' => 'bi-calendar2-week'],
-            ['label' => 'Documents', 'value' => $employee->bankDetail ? 1 : 0, 'icon' => 'bi-folder2-open'],
-            ['label' => 'Payslips', 'value' => 0, 'icon' => 'bi-receipt'],
-            ['label' => 'Timesheets', 'value' => 0, 'icon' => 'bi-clock-history'],
+            ['label' => 'Time Off', 'value' => '0/0 Days', 'icon' => 'bi-calendar2-week'],
+            ['label' => 'Documents', 'value' => 0, 'icon' => 'bi-list-ol', 'url' => route('employees.documents.create', $employee)],
+            ['label' => 'Payslips', 'value' => 2, 'icon' => 'bi-credit-card'],
+            ['label' => 'Timesheets', 'value' => '', 'icon' => 'bi-calendar3', 'url' => route('employees.timesheets.index', $employee)],
             ['label' => 'Loans', 'value' => 0, 'icon' => 'bi-bank'],
         ];
     }

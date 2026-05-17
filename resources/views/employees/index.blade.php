@@ -1,275 +1,224 @@
-@extends('layouts.app', [
-    'heading' => 'Employees',
-    'subheading' => 'Kanban employee directory with HR filters',
-])
+@extends('layouts.openhrms', ['title' => 'Employees'])
+
+@section('module_nav')
+    @include('employees._module_nav')
+@endsection
 
 @section('content')
-    @include('employees._module_nav')
-
-    <div class="employee-directory">
-        <aside class="employee-facets">
-            <div class="facet-title">Company</div>
-            <a href="{{ route('employees.index', request()->except('company_id', 'page')) }}" @class(['active' => !request('company_id')])>
-                <span>All</span>
-                <span>{{ $employeeTotal }}</span>
-            </a>
-            @foreach ($companies as $company)
-                <a href="{{ route('employees.index', [...request()->except('page'), 'company_id' => $company->id]) }}" @class(['active' => (int) request('company_id') === $company->id])>
-                    <span>{{ $company->name }}</span>
-                    <span>{{ $companyCounts[$company->id] ?? 0 }}</span>
-                </a>
-            @endforeach
-
-            <div class="facet-title mt-4">Department</div>
-            <a href="{{ route('employees.index', request()->except('department_id', 'page')) }}" @class(['active' => !request('department_id')])>
-                <span>All</span>
-                <span>{{ $employeeTotal }}</span>
-            </a>
-            @foreach ($departments as $department)
-                <a href="{{ route('employees.index', [...request()->except('page'), 'department_id' => $department->id]) }}" @class(['active' => (int) request('department_id') === $department->id])>
-                    <span>{{ $department->name }}</span>
-                    <span>{{ $departmentCounts[$department->id] ?? 0 }}</span>
-                </a>
-            @endforeach
-        </aside>
-
-        <section class="employee-board">
-            <div class="employee-toolbar">
-                <div class="d-flex gap-2">
-                    <a href="{{ route('employees.create') }}" class="btn btn-sm btn-primary">Create</a>
-                    <a href="{{ route('employees.index') }}" class="btn btn-sm btn-outline-secondary">Discard Filters</a>
-                </div>
-                <form method="get" class="employee-search">
+    <div class="odoo-list-page">
+        <div class="odoo-list-header">
+            <div>
+                <h1>Employees</h1>
+                <a href="{{ route('employees.create') }}" class="odoo-primary">Create</a>
+            </div>
+            <div class="odoo-search-panel">
+                <form method="get" class="odoo-search">
                     @foreach (request()->except('search', 'page') as $key => $value)
                         <input type="hidden" name="{{ $key }}" value="{{ $value }}">
                     @endforeach
-                    <input name="search" value="{{ request('search') }}" class="form-control form-control-sm" placeholder="Search...">
-                    <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-search"></i></button>
+                    <input name="search" value="{{ request('search') }}" placeholder="Search...">
+                    <button aria-label="Search"><i class="bi bi-search"></i></button>
                 </form>
-                <div class="d-flex align-items-center gap-2 small text-secondary">
-                    <span>{{ $employees->firstItem() ?? 0 }}-{{ $employees->lastItem() ?? 0 }} / {{ $employees->total() }}</span>
-                    <a class="btn btn-sm btn-light border" href="{{ route('employees.index', [...request()->except('page'), 'view' => 'kanban']) }}"><i class="bi bi-grid-3x3-gap-fill"></i></a>
-                    <a class="btn btn-sm btn-light border" href="{{ route('employees.index', [...request()->except('page'), 'view' => 'list']) }}"><i class="bi bi-list-ul"></i></a>
+                <div class="odoo-toolbar-line">
+                    <span><i class="bi bi-funnel-fill"></i> Filters</span>
+                    <span><i class="bi bi-list"></i> Group By</span>
+                    <span><i class="bi bi-star-fill"></i> Favorites</span>
                 </div>
             </div>
+            <div class="odoo-pager">
+                <span>{{ $employees->firstItem() ?? 0 }}-{{ $employees->lastItem() ?? 0 }} / {{ $employees->total() }}</span>
+                <a href="#"><i class="bi bi-chevron-left"></i></a>
+                <a href="#"><i class="bi bi-chevron-right"></i></a>
+                <a @class(['active' => $viewMode === 'kanban']) href="{{ route('employees.index', [...request()->except('page'), 'view' => 'kanban']) }}"><i class="bi bi-grid-3x3-gap-fill"></i></a>
+                <a @class(['active' => $viewMode === 'list']) href="{{ route('employees.index', [...request()->except('page'), 'view' => 'list']) }}"><i class="bi bi-list-ul"></i></a>
+                <a @class(['active' => $viewMode === 'activity']) href="{{ route('employees.index', [...request()->except('page'), 'view' => 'activity']) }}"><i class="bi bi-clock"></i></a>
+            </div>
+        </div>
 
-            @if ($viewMode === 'list')
-                <div class="table-responsive bg-white border">
-                    <table class="table table-sm align-middle mb-0">
-                        <thead class="table-light">
-                        <tr>
-                            <th>Name</th>
-                            <th>Work Email</th>
-                            <th>Department</th>
-                            <th>Job Position</th>
-                            <th>Manager</th>
-                            <th>Status</th>
-                            <th></th>
-                        </tr>
+        <div class="odoo-directory">
+            <aside class="odoo-departments">
+                <div class="odoo-sidebar-title"><i class="bi bi-people-fill"></i> DEPARTMENT</div>
+                <a href="{{ route('employees.index', request()->except('department_id', 'page')) }}" @class(['active' => !request('department_id')])>
+                    <span>All</span>
+                    <span></span>
+                </a>
+                @foreach ($departments as $department)
+                    <a href="{{ route('employees.index', [...request()->except('page'), 'department_id' => $department->id]) }}" @class(['active' => (int) request('department_id') === $department->id])>
+                        <span>{{ $department->name }}</span>
+                        <span>{{ $departmentCounts[$department->id] ?? 0 }}</span>
+                    </a>
+                @endforeach
+            </aside>
+
+            <main class="odoo-employees">
+                @if ($viewMode === 'list')
+                    <table class="odoo-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox"></th>
+                                <th>Name</th>
+                                <th>Work Email</th>
+                                <th>Department</th>
+                                <th>Job Position</th>
+                                <th>Phone</th>
+                            </tr>
                         </thead>
                         <tbody>
-                        @foreach ($employees as $employee)
-                            <tr>
-                                <td><a href="{{ route('employees.show', $employee) }}" class="fw-semibold text-decoration-none">{{ $employee->full_name }}</a></td>
-                                <td>{{ $employee->workInformation?->email ?? $employee->email }}</td>
-                                <td>{{ $employee->workInformation?->department?->name ?? '-' }}</td>
-                                <td>{{ $employee->workInformation?->jobPosition?->name ?? '-' }}</td>
-                                <td>{{ $employee->workInformation?->reportingManager?->full_name ?? '-' }}</td>
-                                <td>{{ $employee->is_active ? 'Active' : 'Archived' }}</td>
-                                <td class="text-end"><a href="{{ route('employees.edit', $employee) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a></td>
-                            </tr>
-                        @endforeach
+                            @foreach ($employees as $employee)
+                                <tr>
+                                    <td><input type="checkbox"></td>
+                                    <td><a href="{{ route('employees.show', $employee) }}">{{ $employee->full_name }}</a></td>
+                                    <td>{{ $employee->workInformation?->email ?? $employee->email }}</td>
+                                    <td>{{ $employee->workInformation?->department?->name }}</td>
+                                    <td>{{ $employee->workInformation?->jobPosition?->name }}</td>
+                                    <td>{{ $employee->workInformation?->work_mobile ?? $employee->phone }}</td>
+                                </tr>
+                            @endforeach
                         </tbody>
                     </table>
-                </div>
-            @else
-                <div class="employee-kanban">
-                    @forelse ($employees as $employee)
-                        <article class="employee-card">
-                            <a href="{{ route('employees.show', $employee) }}" class="employee-avatar" style="background: {{ $employee->card_color }}">
-                                @if ($employee->profile_photo_url)
-                                    <img src="{{ $employee->profile_photo_url }}" alt="{{ $employee->full_name }}">
-                                @else
-                                    <span>{{ $employee->initials }}</span>
+                @elseif ($viewMode === 'activity')
+                    <table class="odoo-table">
+                        <thead>
+                            <tr>
+                                <th>Employee</th>
+                                <th>Next Activity</th>
+                                <th>Status</th>
+                                <th>Responsible</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ($employees as $employee)
+                                <tr>
+                                    <td><a href="{{ route('employees.show', $employee) }}">{{ $employee->full_name }}</a></td>
+                                    <td><i class="bi bi-clock-history text-secondary"></i> No activity scheduled</td>
+                                    <td>{{ $employee->is_active ? 'Active' : 'Archived' }}</td>
+                                    <td>Mitchell Admin</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                @else
+                    <div class="odoo-card-grid">
+                        @forelse ($employees as $employee)
+                            <article class="odoo-employee-card">
+                                <a href="{{ route('employees.show', $employee) }}" class="odoo-card-photo">
+                                    @if ($employee->profile_photo_url)
+                                        <img src="{{ $employee->profile_photo_url }}" alt="{{ $employee->full_name }}">
+                                    @else
+                                        <span>{{ $employee->initials }}</span>
+                                    @endif
+                                </a>
+                                <div class="odoo-card-copy">
+                                    <div class="odoo-card-head">
+                                        <a href="{{ route('employees.show', $employee) }}">{{ $employee->full_name }}</a>
+                                        <i @class(['odoo-dot', 'online' => $employee->full_name === 'Mitchell Admin'])></i>
+                                    </div>
+                                    <div class="odoo-job">{{ $employee->workInformation?->jobPosition?->name ?? 'Employee' }}</div>
+                                    <div class="odoo-tags">
+                                        @if ($employee->workInformation?->employment_type)
+                                            <span class="red-dot"></span>{{ $employee->workInformation->employment_type }}
+                                        @endif
+                                        @if ($employee->workInformation?->jobPosition?->name === 'Consultant')
+                                            <span class="blue-dot"></span>Consultant
+                                        @endif
+                                    </div>
+                                    <div>{{ $employee->workInformation?->email ?? $employee->email }}</div>
+                                    <div>{{ $employee->workInformation?->work_mobile ?? $employee->phone }}</div>
+                                </div>
+                                <i class="bi bi-clock odoo-card-clock"></i>
+                                @if (in_array($employee->full_name, ['Mitchell Admin', 'Marc Demo'], true))
+                                    <i class="bi bi-chat-fill odoo-card-chat"></i>
                                 @endif
-                            </a>
-                            <div class="min-w-0 flex-grow-1">
-                                <div class="d-flex justify-content-between gap-2">
-                                    <a href="{{ route('employees.show', $employee) }}" class="employee-name">{{ $employee->full_name }}</a>
-                                    <span class="status-dot {{ $employee->is_active ? 'online' : '' }}"></span>
-                                </div>
-                                <div class="employee-title">{{ $employee->workInformation?->jobPosition?->name ?? 'Employee' }}</div>
-                                <div class="employee-meta">
-                                    <i class="bi bi-building"></i>
-                                    {{ $employee->workInformation?->department?->name ?? 'No department' }}
-                                </div>
-                                <div class="employee-meta">{{ $employee->workInformation?->email ?? $employee->email }}</div>
-                                <div class="employee-meta">{{ $employee->workInformation?->work_mobile ?? $employee->phone ?? '-' }}</div>
-                            </div>
-                            <div class="employee-card-actions">
-                                <a href="{{ route('employees.edit', $employee) }}"><i class="bi bi-pencil"></i></a>
-                            </div>
-                        </article>
-                    @empty
-                        <div class="empty-state">No employees match these filters.</div>
-                    @endforelse
-                </div>
-            @endif
-
-            @if ($employees->hasPages())
-                <div class="mt-3">{{ $employees->links() }}</div>
-            @endif
-        </section>
+                            </article>
+                        @empty
+                            <div class="odoo-empty">No employees match these filters.</div>
+                        @endforelse
+                    </div>
+                @endif
+            </main>
+        </div>
     </div>
 @endsection
 
 @push('styles')
     <style>
-        .employee-module-nav {
-            background: #6f5b9a;
-            color: #fff;
-            display: flex;
-            justify-content: space-between;
-            margin: -1.5rem -1.5rem 1rem;
-            padding: .55rem .85rem;
+        body { background: #f5f5f5; color: #1f2a44; font-family: Arial, Helvetica, sans-serif; }
+        .odoo-list-page { background: #fff; min-height: calc(100vh - 44px); }
+        .odoo-list-header {
+            align-items: start;
+            border-bottom: 1px solid #d9dde4;
+            display: grid;
+            grid-template-columns: 220px 1fr auto;
+            gap: 8px;
+            padding: 6px 8px 10px;
         }
-        .employee-module-nav a {
-            color: rgba(255,255,255,.82);
-            font-size: .82rem;
+        .odoo-list-header h1 { font-size: 21px; font-weight: 400; margin: 0 0 10px; }
+        .odoo-primary {
+            background: #7e57a3;
+            border: 1px solid #7e57a3;
+            color: #fff;
+            display: inline-block;
+            font-size: 13px;
+            padding: 6px 15px;
             text-decoration: none;
         }
-        .employee-module-nav a.active,
-        .employee-module-nav a:hover {
-            color: #fff;
+        .odoo-search-panel { justify-self: end; max-width: 945px; width: 100%; }
+        .odoo-search { display: flex; }
+        .odoo-search input { border: 1px solid #cfd3da; flex: 1; font-size: 13px; height: 30px; padding: 4px 7px; }
+        .odoo-search button { background: #fff; border: 1px solid #cfd3da; border-left: 0; width: 30px; }
+        .odoo-toolbar-line { background: #f4f5f7; display: flex; gap: 18px; font-size: 13px; padding: 6px 8px; width: fit-content; }
+        .odoo-pager { align-items: center; display: flex; gap: 13px; font-size: 13px; padding-top: 34px; }
+        .odoo-pager a { color: #526071; padding: 6px 8px; text-decoration: none; }
+        .odoo-pager a.active { background: #d8dde4; color: #111827; }
+        .odoo-directory { display: grid; grid-template-columns: 212px 1fr; }
+        .odoo-departments { border-right: 1px solid #d9dde4; min-height: calc(100vh - 126px); padding: 16px 8px; }
+        .odoo-sidebar-title { color: #344052; font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+        .odoo-departments a {
+            color: #111827;
+            display: flex;
+            font-size: 13px;
+            justify-content: space-between;
+            padding: 5px 15px;
+            text-decoration: none;
         }
-        .employee-directory {
+        .odoo-departments a.active { background: #ccecf7; font-weight: 700; }
+        .odoo-employees { background: #f7f8fa; padding: 12px 16px 20px; }
+        .odoo-card-grid { display: grid; gap: 8px 16px; grid-template-columns: repeat(5, minmax(250px, 1fr)); }
+        .odoo-employee-card {
             background: #fff;
-            border: 1px solid #d9dee7;
+            border: 1px solid #d9dde4;
             display: grid;
-            grid-template-columns: 220px 1fr;
-            min-height: 650px;
-        }
-        .employee-facets {
-            border-right: 1px solid #e2e6ee;
-            padding: .85rem;
-        }
-        .facet-title {
-            color: #51446f;
-            font-size: .75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        .employee-facets a {
-            align-items: center;
-            color: #26313f;
-            display: flex;
-            font-size: .82rem;
-            justify-content: space-between;
-            padding: .35rem .5rem;
-            text-decoration: none;
-        }
-        .employee-facets a.active {
-            background: #d8eff8;
-        }
-        .employee-board {
-            min-width: 0;
-            padding: .75rem;
-        }
-        .employee-toolbar {
-            align-items: center;
-            display: grid;
-            gap: .75rem;
-            grid-template-columns: auto 1fr auto;
-            margin-bottom: .75rem;
-        }
-        .employee-search {
-            display: flex;
-            justify-self: end;
-            max-width: 540px;
-            width: 100%;
-        }
-        .employee-kanban {
-            display: grid;
-            gap: .55rem;
-            grid-template-columns: repeat(4, minmax(220px, 1fr));
-        }
-        .employee-card {
-            border: 1px solid #dbe1ea;
-            display: flex;
-            gap: .65rem;
-            min-height: 105px;
-            padding: .55rem;
+            grid-template-columns: 96px 1fr;
+            min-height: 116px;
             position: relative;
         }
-        .employee-avatar {
-            align-items: center;
-            color: #fff;
-            display: flex;
-            flex: 0 0 78px;
-            font-size: 2rem;
-            font-weight: 600;
-            justify-content: center;
-            overflow: hidden;
-            text-decoration: none;
-        }
-        .employee-avatar img {
-            height: 100%;
-            object-fit: cover;
-            width: 100%;
-        }
-        .employee-name {
-            color: #1f2937;
-            display: block;
-            font-size: .88rem;
-            font-weight: 700;
-            overflow: hidden;
-            text-decoration: none;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .employee-title,
-        .employee-meta {
-            color: #4b5563;
-            font-size: .76rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .status-dot {
-            background: #f59e0b;
-            border-radius: 50%;
-            flex: 0 0 9px;
-            height: 9px;
-            margin-top: .25rem;
-            width: 9px;
-        }
-        .status-dot.online {
-            background: #22c55e;
-        }
-        .employee-card-actions {
-            bottom: .4rem;
-            position: absolute;
-            right: .5rem;
-        }
-        .employee-card-actions a {
-            color: #7b8190;
-        }
-        .empty-state {
-            border: 1px dashed #cbd5e1;
-            color: #64748b;
-            grid-column: 1 / -1;
-            padding: 3rem;
-            text-align: center;
-        }
-        @media (max-width: 1200px) {
-            .employee-kanban { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
-        }
-        @media (max-width: 900px) {
-            .employee-directory { grid-template-columns: 1fr; }
-            .employee-facets { border-right: 0; border-bottom: 1px solid #e2e6ee; }
-            .employee-toolbar { grid-template-columns: 1fr; }
-            .employee-search { justify-self: stretch; max-width: none; }
-            .employee-kanban { grid-template-columns: 1fr; }
+        .odoo-card-photo { background: #d9dde4; color: #fff; display: grid; font-size: 26px; font-weight: 700; place-items: center; text-decoration: none; }
+        .odoo-card-photo img { height: 100%; object-fit: cover; width: 100%; }
+        .odoo-card-copy { font-size: 12px; line-height: 1.55; min-width: 0; padding: 8px 20px 8px 16px; }
+        .odoo-card-head { align-items: center; display: flex; justify-content: space-between; gap: 8px; }
+        .odoo-card-head a { color: #07152d; font-size: 14px; text-decoration: none; }
+        .odoo-job { color: #20304b; font-size: 14px; }
+        .odoo-tags { color: #20304b; min-height: 15px; }
+        .odoo-dot { background: #f5a400; border-radius: 50%; display: inline-block; flex: 0 0 11px; height: 11px; width: 11px; }
+        .odoo-dot.online { background: #00b94f; }
+        .red-dot, .blue-dot { border-radius: 50%; display: inline-block; height: 6px; margin: 0 4px 1px 0; width: 6px; }
+        .red-dot { background: #f35f6b; }
+        .blue-dot { background: #36a3e8; margin-left: 5px; }
+        .odoo-card-clock { bottom: 5px; color: #ccd1d8; position: absolute; right: 8px; }
+        .odoo-card-chat { bottom: 5px; color: #714e92; position: absolute; right: 28px; }
+        .odoo-table { background: #fff; border-collapse: collapse; font-size: 13px; width: 100%; }
+        .odoo-table th { background: #e9ecef; color: #3a4256; font-weight: 700; }
+        .odoo-table td, .odoo-table th { border: 1px solid #dfe3e8; padding: 6px 8px; }
+        .odoo-table a { color: #4f2f86; text-decoration: none; }
+        .odoo-empty { color: #667085; padding: 40px; }
+        @media (max-width: 1500px) { .odoo-card-grid { grid-template-columns: repeat(4, minmax(250px, 1fr)); } }
+        @media (max-width: 1150px) { .odoo-card-grid { grid-template-columns: repeat(2, minmax(250px, 1fr)); } }
+        @media (max-width: 800px) {
+            .odoo-list-header, .odoo-directory { grid-template-columns: 1fr; }
+            .odoo-search-panel { justify-self: stretch; }
+            .odoo-pager { padding-top: 0; }
+            .odoo-departments { min-height: 0; }
+            .odoo-card-grid { grid-template-columns: 1fr; }
         }
     </style>
 @endpush

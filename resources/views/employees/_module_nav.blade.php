@@ -1,43 +1,98 @@
-<div class="employee-module-nav">
-    <div class="d-flex align-items-center gap-3">
-        <div class="d-flex align-items-center gap-2 fw-semibold">
+<nav class="odoo-topbar">
+    <div class="odoo-top-left">
+        <a href="{{ route('employees.index') }}" class="odoo-app-switcher" aria-label="Apps">
             <i class="bi bi-grid-3x3-gap-fill"></i>
-            Employees
-        </div>
+        </a>
+        <a href="{{ route('employees.index') }}" class="odoo-module-title">Employees</a>
         <a href="{{ route('employees.index') }}" @class(['active' => request()->routeIs('employees.*')])>Employees</a>
         <a href="#">Document Templates</a>
         <a href="{{ route('organization.index') }}">Departments</a>
-        <a href="#">Legal Actions</a>
-        <a href="#">Loans & Advances</a>
+        <a href="#">Loans &amp; Advances</a>
+        <a href="#">Reporting</a>
         <a href="#">Configuration</a>
     </div>
-    <div class="d-none d-lg-flex align-items-center gap-3 small">
-        <span><i class="bi bi-chat-dots-fill text-info"></i> 4</span>
-        <span><i class="bi bi-bell-fill text-light"></i></span>
-        <span>My Company</span>
-        <span class="fw-semibold">Mitchell Admin</span>
+    <div class="odoo-top-right">
+        <span class="odoo-icon-badge"><i class="bi bi-chat-fill"></i><b>5</b></span>
+        <span><i class="bi bi-bell-fill"></i></span>
+        <span class="odoo-icon-badge"><i class="bi bi-clock-history"></i><b>12</b></span>
+        <span class="odoo-user-pic">MA</span>
+        <span>Mitchell Admin</span>
     </div>
-</div>
+</nav>
 
 @once
     @push('styles')
         <style>
-            .employee-module-nav {
-                background: #6f5b9a;
+            .odoo-topbar {
+                align-items: center;
+                background: #7e57a3;
                 color: #fff;
                 display: flex;
+                font-size: 13px;
+                height: 44px;
                 justify-content: space-between;
-                margin: -1.5rem -1.5rem 1rem;
-                padding: .55rem .85rem;
+                padding: 0 14px;
             }
-            .employee-module-nav a {
-                color: rgba(255,255,255,.82);
-                font-size: .82rem;
+            .odoo-topbar a {
+                color: #fff;
                 text-decoration: none;
             }
-            .employee-module-nav a.active,
-            .employee-module-nav a:hover {
-                color: #fff;
+            .odoo-top-left,
+            .odoo-top-right {
+                align-items: center;
+                display: flex;
+                gap: 24px;
+                min-width: 0;
+            }
+            .odoo-top-right {
+                gap: 14px;
+            }
+            .odoo-app-switcher {
+                font-size: 16px;
+                margin-right: -12px;
+            }
+            .odoo-module-title {
+                font-size: 20px;
+                line-height: 1;
+            }
+            .odoo-icon-badge {
+                position: relative;
+            }
+            .odoo-icon-badge b {
+                background: #00a09d;
+                border-radius: 8px;
+                font-size: 10px;
+                font-weight: 700;
+                left: 9px;
+                line-height: 1;
+                padding: 2px 5px;
+                position: absolute;
+                top: -10px;
+            }
+            .odoo-user-pic {
+                align-items: center;
+                background: #b78b6a;
+                border-radius: 50%;
+                display: inline-flex;
+                font-size: 10px;
+                height: 24px;
+                justify-content: center;
+                width: 24px;
+            }
+            @media (max-width: 900px) {
+                .odoo-topbar {
+                    height: auto;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    padding: 8px 12px;
+                }
+                .odoo-top-left {
+                    gap: 12px;
+                    flex-wrap: wrap;
+                }
+                .odoo-top-right {
+                    display: none;
+                }
             }
         </style>
     @endpush

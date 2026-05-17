@@ -111,6 +111,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
+        $this->seedEmployeeCloneRoster($company, $user);
+
         $device = AttendanceDevice::query()->firstOrCreate(
             ['machine_ip' => '192.168.2.64'],
             [
@@ -193,5 +195,133 @@ class DatabaseSeeder extends Seeder
             'employee_shift_enabled' => true,
             'vacation_management_enabled' => true,
         ]);
+    }
+
+    private function seedEmployeeCloneRoster(Company $company, User $user): void
+    {
+        $departments = collect([
+            'Administration',
+            'Management',
+            'Professional Services',
+            'Research & Development',
+            'Sales',
+        ])->mapWithKeys(function (string $name) use ($company, $user) {
+            $department = Department::query()->firstOrCreate(
+                ['name' => $name],
+                ['created_by_id' => $user->id, 'modified_by_id' => $user->id]
+            );
+            $department->companies()->syncWithoutDetaching([$company->id]);
+
+            return [$name => $department];
+        });
+
+        $positions = collect([
+            'Consultant' => 'Professional Services',
+            'Experienced Developer' => 'Research & Development',
+            'Marketing and Community Manager' => 'Sales',
+            'Chief Executive Officer' => 'Management',
+            'Chief Medical Officer' => 'Management',
+            'Odoo Developer' => 'Research & Development',
+            'Manager' => 'Management',
+            'Chief Technical Officer' => 'Research & Development',
+            'Human Resources Manager' => 'Administration',
+        ])->mapWithKeys(function (string $departmentName, string $name) use ($departments, $company, $user) {
+            $position = JobPosition::query()->firstOrCreate(
+                ['department_id' => $departments[$departmentName]->id, 'name' => $name],
+                ['created_by_id' => $user->id, 'modified_by_id' => $user->id]
+            );
+            $position->companies()->syncWithoutDetaching([$company->id]);
+
+            return [$name => $position];
+        });
+
+        $people = [
+            ['Abigail', 'Peterson', 'Consultant', 'Professional Services', 'abigail.peterson39@example.com', '(482)-233-3393', 'Consultant', '#b97a86'],
+            ['Anita', 'Oliver', 'Experienced Developer', 'Research & Development', 'anita.oliver32@example.com', '(538)-497-4804', 'Employee', '#cf5f75'],
+            ['Audrey', 'Peterson', 'Consultant', 'Professional Services', 'audrey.peterson25@example.com', '(203)-276-7903', 'Employee', '#d7a368'],
+            ['Beth', 'Evans', 'Experienced Developer', 'Research & Development', 'beth.evans77@example.com', '(754)-532-3841', 'Employee', '#d5bcc8'],
+            ['Doris', 'Cole', 'Consultant', 'Professional Services', 'doris.cole31@example.com', '(883)-331-5378', 'Consultant', '#3e3e48'],
+            ['Eli', 'Lambert', 'Marketing and Community Manager', 'Sales', 'eli.lambert22@example.com', '(644)-169-1352', 'Employee', '#8f675f'],
+            ['Ernest', 'Reed', 'Consultant', 'Professional Services', 'ernest.reed47@example.com', '(944)-518-8232', 'Consultant', '#927866'],
+            ['Jeffrey', 'Kelly', 'Marketing and Community Manager', 'Sales', 'jeffrey.kelly72@example.com', '(916)-264-7362', 'Employee', '#63483d'],
+            ['Jennie', 'Fletcher', 'Experienced Developer', 'Research & Development', 'jennie.fletcher76@example.com', '(157)-363-8229', 'Employee', '#c6689a'],
+            ['Joe', '', 'Chief Medical Officer', 'Management', 'joe@example.com', '(376)-3852-7863', 'Employee', '#be6d62'],
+            ['Juliet', '', 'Odoo Developer', 'Research & Development', 'juliet123@example.com', '(956)-3852-7863', 'Employee', '#b5d7df'],
+            ['Keith', 'Byrd', 'Experienced Developer', 'Research & Development', 'keith.byrd52@example.com', '(449)-505-5146', 'Employee', '#8b725b'],
+            ['Marc', 'Demo', 'Experienced Developer', 'Research & Development', 'mark.brown23@example.com', '+3281813700', 'Employee', '#d78f67'],
+            ['Mitchell', 'Admin', 'Chief Executive Officer', 'Management', 'aiden.hughes71@example.com', '(237)-125-2389', 'Trainer', '#7f675d'],
+            ['Paul', 'Williams', 'Experienced Developer', 'Research & Development', 'paul.williams59@example.com', '(114)-262-1607', 'Employee', '#b7a291'],
+            ['Rachel', 'Perry', 'Marketing and Community Manager', 'Sales', 'jod@odoo.com', '(206)-267-3735', 'Employee', '#8e7561'],
+            ['Randall', 'Lewis', 'Experienced Developer', 'Research & Development', 'randall.lewis74@example.com', '(332)-775-6660', 'Employee', '#589069'],
+            ['Roger', 'Scott', 'Manager', 'Management', 'Roger123@example.com', '+3282823500', 'Employee', '#7b8a60'],
+            ['Ronnie', 'Hart', 'Chief Technical Officer', 'Research & Development', 'ronnie.hart87@example.com', '(376)-310-7863', 'Trainer', '#4c6f85'],
+            ['Sharlene', 'Rhodes', 'Experienced Developer', 'Research & Development', 'sharlene.rhodes49@example.com', '(450)-719-4182', 'Employee', '#c5a3a0'],
+            ['Tina', 'Williamson', 'Human Resources Manager', 'Administration', 'tina.williamson98@example.com', '(360)-694-7266', 'Employee', '#d16d86'],
+            ['Toni', 'Jimenez', 'Consultant', 'Professional Services', 'toni.jimenez23@example.com', '(663)-707-8451', 'Consultant', '#c5a0a0'],
+            ['Walter', 'Horton', 'Experienced Developer', 'Research & Development', 'walter.horton80@example.com', '(350)-912-1201', 'Employee', '#6b5049'],
+            ['demo', '', 'hr', 'Administration', 'demo@example.com', '+1 (650) 555-0111', 'Employee', '#d7d7d7'],
+        ];
+
+        $mitchell = null;
+        $createdEmployees = [];
+        foreach ($people as $index => [$first, $last, $positionName, $departmentName, $email, $phone, $type, $color]) {
+            $employee = Employee::query()->updateOrCreate(
+                ['email' => $email],
+                [
+                    'badge_id' => 'EMP-'.str_pad((string) ($index + 1), 4, '0', STR_PAD_LEFT),
+                    'profile_photo_url' => 'https://ui-avatars.com/api/?name='.urlencode(trim($first.' '.$last)).'&background='.ltrim($color, '#').'&color=fff&size=128',
+                    'card_color' => $color,
+                    'first_name' => $first,
+                    'last_name' => $last ?: null,
+                    'phone' => $phone,
+                    'gender' => in_array($first, ['Abigail', 'Anita', 'Audrey', 'Beth', 'Doris', 'Jennie', 'Juliet', 'Rachel', 'Sharlene', 'Tina', 'Toni'], true) ? 'female' : 'male',
+                    'country' => 'United States',
+                    'state' => 'CA',
+                    'city' => 'San Francisco',
+                    'is_active' => true,
+                ]
+            );
+
+            if ($first === 'Mitchell') {
+                $mitchell = $employee;
+            }
+
+            $createdEmployees[$employee->full_name] = $employee;
+
+            EmployeeWorkInformation::query()->updateOrCreate(
+                ['employee_id' => $employee->id],
+                [
+                    'company_id' => $company->id,
+                    'department_id' => $departments[$departmentName]->id,
+                    'job_position_id' => $positions[$positionName]->id ?? null,
+                    'reporting_manager_id' => $first === 'Mitchell' ? null : $mitchell?->id,
+                    'coach_id' => $mitchell?->id,
+                    'email' => $email,
+                    'work_mobile' => $phone,
+                    'work_phone' => $phone,
+                    'employment_type' => $type,
+                    'work_location' => 'Building 1, Second Floor',
+                    'working_hours' => 'Standard 40 Hours / Week',
+                    'timezone' => 'Europe/Brussels',
+                    'date_joining' => '2022-02-14',
+                    'created_by_id' => $user->id,
+                    'modified_by_id' => $user->id,
+                ]
+            );
+        }
+
+        if ($mitchell) {
+            foreach ($createdEmployees as $name => $employee) {
+                $managerId = $name === 'Mitchell Admin' ? null : $mitchell->id;
+                if (in_array($name, ['Anita Oliver', 'Audrey Peterson'], true) && isset($createdEmployees['Abigail Peterson'])) {
+                    $managerId = $createdEmployees['Abigail Peterson']->id;
+                }
+
+                $employee->workInformation()->update([
+                    'reporting_manager_id' => $managerId,
+                    'coach_id' => $mitchell->id,
+                ]);
+            }
+        }
     }
 }
