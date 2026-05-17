@@ -198,10 +198,24 @@
         .odoo-card-photo { background: #d9dde4; color: #fff; display: grid; font-size: 26px; font-weight: 700; place-items: center; text-decoration: none; }
         .odoo-card-photo img { height: 100%; object-fit: cover; width: 100%; }
         .odoo-card-copy { font-size: 12px; line-height: 1.55; min-width: 0; padding: 8px 20px 8px 16px; }
-        .odoo-card-head { align-items: center; display: flex; justify-content: space-between; gap: 8px; }
-        .odoo-card-head a { color: #07152d; font-size: 14px; text-decoration: none; }
-        .odoo-job { color: #20304b; font-size: 14px; }
-        .odoo-tags { color: #20304b; min-height: 15px; }
+        .odoo-card-copy > div {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .odoo-card-head { align-items: center; display: flex; justify-content: space-between; gap: 8px; min-width: 0; }
+        .odoo-card-head a {
+            color: #07152d;
+            display: inline-block;
+            font-size: 14px;
+            max-width: calc(100% - 16px);
+            overflow: hidden;
+            text-decoration: none;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .odoo-job { color: #20304b; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .odoo-tags { color: #20304b; min-height: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .odoo-dot { background: #f5a400; border-radius: 50%; display: inline-block; flex: 0 0 11px; height: 11px; width: 11px; }
         .odoo-dot.online { background: #00b94f; }
         .red-dot, .blue-dot { border-radius: 50%; display: inline-block; height: 6px; margin: 0 4px 1px 0; width: 6px; }

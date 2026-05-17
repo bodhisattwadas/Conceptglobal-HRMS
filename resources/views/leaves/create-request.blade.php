@@ -1,7 +1,9 @@
-@extends('layouts.openhrms', ['title' => 'Create Time Off'])
-@include('leaves._nav', ['appTitle' => 'Leaves'])
+@extends('layouts.app', ['heading' => 'Leaves', 'subheading' => 'Create Time Off'])
+
 
 @section('content')
+    @include('leaves._nav', ['appTitle' => 'Leaves'])
+
     <div class="oh-page-title"><h1>My Time Off / New</h1></div>
     <form method="post" action="{{ route('leaves.requests.store') }}">
         @csrf
@@ -58,3 +60,9 @@
         </div>
     </form>
 @endsection
+
+@push('styles')
+    <style>
+        .content > section { padding-bottom: 0 !important; }
+    </style>
+@endpush

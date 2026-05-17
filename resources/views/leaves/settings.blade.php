@@ -1,7 +1,9 @@
-@extends('layouts.openhrms', ['title' => 'Leave Settings'])
-@include('leaves._nav', ['appTitle' => 'Leaves'])
+@extends('layouts.app', ['heading' => 'Leaves', 'subheading' => 'Settings'])
+
 
 @section('content')
+    @include('leaves._nav', ['appTitle' => 'Leaves'])
+
     <form method="post" action="{{ route('leaves.settings.update') }}">
         @csrf
         <div class="oh-page-title">
@@ -104,5 +106,6 @@
         .text-purple {
             color: #6f4da1;
         }
+        .content > section { padding-bottom: 0 !important; }
     </style>
 @endpush

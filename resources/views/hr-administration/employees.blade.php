@@ -96,14 +96,41 @@
         }
         .employee-photo { background: #d8dde6; color: #fff; display: grid; font-size: 23px; font-weight: 700; place-items: center; }
         .employee-photo img { height: 100%; object-fit: cover; width: 100%; }
-        .employee-copy { font-size: 11px; line-height: 1.55; padding: 7px 18px 7px 12px; }
+        .employee-copy { font-size: 11px; line-height: 1.55; min-width: 0; padding: 7px 18px 7px 12px; }
+        .employee-copy > div {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .employee-card-title { display: flex; justify-content: space-between; }
-        .employee-card-title a { color: #07152d; font-size: 12px; text-decoration: none; }
+        .employee-card-title a {
+            color: #07152d;
+            display: inline-block;
+            font-size: 12px;
+            max-width: calc(100% - 14px);
+            overflow: hidden;
+            text-decoration: none;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .job { font-size: 12px; }
+        .employee-copy .job {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         .tags span { background: #f35f6b; border-radius: 50%; display: inline-block; height: 5px; margin-right: 4px; width: 5px; }
         .status-dot { background: #f5a400; border-radius: 50%; height: 9px; width: 9px; }
         .status-dot.online { background: #00b94f; }
         .card-clock { bottom: 4px; color: #cfd4dc; position: absolute; right: 7px; }
+        .hr-employee-card .employee-copy div:nth-child(4),
+        .hr-employee-card .employee-copy div:nth-child(5) {
+            display: block;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
         @media (max-width: 1300px) { .hr-employee-grid { grid-template-columns: repeat(3, minmax(230px, 1fr)); } }
         @media (max-width: 900px) { .hr-employee-shell { grid-template-columns: 1fr; } .hr-employee-grid { grid-template-columns: 1fr; } }
     </style>

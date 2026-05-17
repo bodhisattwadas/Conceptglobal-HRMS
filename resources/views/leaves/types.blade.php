@@ -1,7 +1,9 @@
-@extends('layouts.openhrms', ['title' => 'Time Off Types'])
-@include('leaves._nav', ['appTitle' => 'Time Off'])
+@extends('layouts.app', ['heading' => 'Leaves', 'subheading' => 'Time Off Types'])
+
 
 @section('content')
+    @include('leaves._nav', ['appTitle' => 'Time Off'])
+
     <div class="leave-list-head">
         <div class="d-flex gap-2">
             <div>
@@ -73,6 +75,7 @@
         .oh-list-table { font-size: 14px; }
         .oh-list-table th { height: 31px; }
         .oh-list-table td { height: 28px; }
+        .content > section { padding-bottom: 0 !important; }
         @media (max-width: 900px) { .leave-list-head { grid-template-columns: 1fr; } .leave-search-block { justify-self: stretch; } .leave-pager { padding-top: 0; } }
     </style>
 @endpush

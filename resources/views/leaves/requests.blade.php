@@ -1,7 +1,9 @@
-@extends('layouts.openhrms', ['title' => 'My Time Off'])
-@include('leaves._nav', ['appTitle' => 'Leaves'])
+@extends('layouts.app', ['heading' => 'Leaves', 'subheading' => 'My Time Off'])
+
 
 @section('content')
+    @include('leaves._nav', ['appTitle' => 'Leaves'])
+
     <div class="oh-page-title">
         <h1>My Time Off</h1>
         <form class="oh-searchbar">
@@ -44,3 +46,9 @@
     </table>
     <div class="p-3">{{ $requests->links() }}</div>
 @endsection
+
+@push('styles')
+    <style>
+        .content > section { padding-bottom: 0 !important; }
+    </style>
+@endpush
