@@ -4,14 +4,27 @@
 ])
 
 @section('content')
-    <div class="org-module-bar">
-        <span class="org-module-title">Organization</span>
-        <span>Companies</span>
-        <span>Departments</span>
-        <span>Job Positions</span>
-        <span>Job Roles</span>
-    </div>
+    <nav class="odoo-topbar">
+        <div class="odoo-top-left">
+            <a href="{{ route('organization.index') }}" class="odoo-app-switcher" aria-label="Apps">
+                <i class="bi bi-grid-3x3-gap-fill"></i>
+            </a>
+            <a href="{{ route('organization.index') }}" class="odoo-module-title">Organization</a>
+            <a href="{{ route('organization.index', ['menu' => 'companies']) }}" @class(['active' => $menu === 'companies'])>Companies</a>
+            <a href="{{ route('organization.index', ['menu' => 'departments']) }}" @class(['active' => $menu === 'departments'])>Departments</a>
+            <a href="{{ route('organization.index', ['menu' => 'job-positions']) }}" @class(['active' => $menu === 'job-positions'])>Job Positions</a>
+            <a href="{{ route('organization.index', ['menu' => 'job-roles']) }}" @class(['active' => $menu === 'job-roles'])>Job Roles</a>
+        </div>
+        <div class="odoo-top-right">
+            <span class="odoo-icon-badge"><i class="bi bi-chat-fill"></i><b>5</b></span>
+            <span><i class="bi bi-bell-fill"></i></span>
+            <span class="odoo-icon-badge"><i class="bi bi-clock-history"></i><b>12</b></span>
+            <span class="odoo-user-pic">MA</span>
+            <span>Mitchell Admin</span>
+        </div>
+    </nav>
     <div class="row g-4">
+        @if($menu === 'companies')
         <div class="col-xl-4">
             <div class="card table-card">
                 <div class="card-header org-card-header fw-semibold">New Company</div>
@@ -73,6 +86,24 @@
                 </div>
             </div>
         </div>
+        @elseif($menu === 'departments')
+        <div class="col-xl-4">
+            <div class="card table-card">
+                <div class="card-header org-card-header fw-semibold">New Department</div>
+                <div class="card-body">
+                    <form method="post" action="{{ route('organization.departments.store') }}" class="vstack gap-3">
+                        @csrf
+                        <input name="name" class="form-control" placeholder="Department name" required>
+                        <select name="company_ids[]" class="form-select" multiple>
+                            @foreach ($companies as $company)
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
+                            @endforeach
+                        </select>
+                        <button class="btn btn-oh">Create Department</button>
+                    </form>
+                </div>
+            </div>
+        </div>
 
         <div class="col-xl-8">
             <div class="card table-card">
@@ -99,7 +130,7 @@
                 </div>
             </div>
         </div>
-
+        @elseif($menu === 'job-positions')
         <div class="col-xl-6">
             <div class="card table-card">
                 <div class="card-header org-card-header fw-semibold">New Job Position</div>
@@ -126,6 +157,34 @@
 
         <div class="col-xl-6">
             <div class="card table-card">
+                <div class="card-header org-card-header fw-semibold">Job Positions</div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="org-table-head">
+                        <tr>
+                            <th>Name</th>
+                            <th>Department</th>
+                            <th>Companies</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @forelse ($jobPositions as $position)
+                            <tr>
+                                <td class="fw-semibold">{{ $position->name }}</td>
+                                <td>{{ $position->department?->name ?: '-' }}</td>
+                                <td>{{ $position->companies->pluck('name')->join(', ') ?: '-' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="text-center text-secondary py-4">No job positions yet.</td></tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @elseif($menu === 'job-roles')
+        <div class="col-xl-6">
+            <div class="card table-card">
                 <div class="card-header org-card-header fw-semibold">New Job Role</div>
                 <div class="card-body">
                     <form method="post" action="{{ route('organization.job-roles.store') }}" class="vstack gap-3">
@@ -147,26 +206,80 @@
                 </div>
             </div>
         </div>
+
+        <div class="col-xl-6">
+            <div class="card table-card">
+                <div class="card-header org-card-header fw-semibold">Job Roles</div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead class="org-table-head">
+                        <tr>
+                            <th>Name</th>
+                            <th>Job Position</th>
+                            <th>Companies</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @forelse ($jobRoles as $role)
+                            <tr>
+                                <td class="fw-semibold">{{ $role->name }}</td>
+                                <td>{{ $role->jobPosition?->name ?: '-' }}</td>
+                                <td>{{ $role->companies->pluck('name')->join(', ') ?: '-' }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="text-center text-secondary py-4">No job roles yet.</td></tr>
+                        @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 @endsection
 
 @push('styles')
     <style>
-        .org-module-bar {
+        .odoo-topbar {
             align-items: center;
             background: #7e57a3;
             color: #fff;
             display: flex;
-            gap: 22px;
-            margin: -12px -16px 14px;
-            min-height: 32px;
-            padding: 0 12px;
+            font-size: 13px;
+            height: 44px;
+            justify-content: space-between;
+            margin: -1.5rem -1.5rem 14px;
+            padding: 0 14px;
         }
-        .org-module-title {
-            font-size: 32px;
-            font-weight: 500;
+        .odoo-topbar a { color: #fff; text-decoration: none; }
+        .odoo-top-left, .odoo-top-right { align-items: center; display: flex; gap: 24px; min-width: 0; }
+        .odoo-top-right { gap: 14px; }
+        .odoo-app-switcher { font-size: 16px; margin-right: -12px; }
+        .odoo-module-title {
+            font-size: 20px;
             line-height: 1;
-            margin-right: 4px;
+        }
+        .odoo-icon-badge { position: relative; }
+        .odoo-icon-badge b {
+            background: #00a09d;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 700;
+            left: 9px;
+            line-height: 1;
+            padding: 2px 5px;
+            position: absolute;
+            top: -10px;
+        }
+        .odoo-user-pic {
+            align-items: center;
+            background: #b78b6a;
+            border-radius: 50%;
+            display: inline-flex;
+            font-size: 10px;
+            height: 24px;
+            justify-content: center;
+            width: 24px;
         }
         .org-card-header {
             background: #f8f6fb;

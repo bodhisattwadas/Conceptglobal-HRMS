@@ -15,6 +15,7 @@ class OrganizationController extends Controller
     public function index(): View
     {
         return view('organization.index', [
+            'menu' => request()->string('menu', 'companies')->toString(),
             'companies' => Company::latest()->get(),
             'departments' => Department::with('companies')->latest()->get(),
             'jobPositions' => JobPosition::with('department', 'companies')->latest()->get(),

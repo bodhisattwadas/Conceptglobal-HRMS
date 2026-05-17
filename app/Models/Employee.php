@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'user_id',
     'badge_id',
     'profile_photo_url',
+    'cv_file_path',
+    'related_document_paths',
     'card_color',
     'first_name',
     'last_name',
@@ -46,6 +48,7 @@ class Employee extends Model
             'children_count' => 'integer',
             'is_active' => 'boolean',
             'additional_info' => 'array',
+            'related_document_paths' => 'array',
         ];
     }
 

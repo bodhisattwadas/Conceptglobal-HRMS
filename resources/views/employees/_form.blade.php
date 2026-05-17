@@ -48,6 +48,18 @@
         <input name="profile_photo_url" type="url" value="{{ old('profile_photo_url', $employee->profile_photo_url ?? '') }}" class="form-control" placeholder="https://...">
     </div>
     <div class="col-md-4">
+        <label class="form-label">Profile Image Upload</label>
+        <input name="profile_photo_file" type="file" class="form-control" accept="image/*">
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">CV Upload</label>
+        <input name="cv_file" type="file" class="form-control" accept=".pdf,.doc,.docx">
+    </div>
+    <div class="col-md-6">
+        <label class="form-label">Related Documents</label>
+        <input name="related_documents[]" type="file" class="form-control" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple>
+    </div>
+    <div class="col-md-4">
         <label class="form-label">Card Color</label>
         <input name="card_color" type="color" value="{{ old('card_color', $employee->card_color ?? '#6f42c1') }}" class="form-control form-control-color w-100">
     </div>

@@ -2,8 +2,8 @@
 
 @section('content')
     @include('employees._module_nav')
-    <div class="card table-card">
-        <div class="card-body">
+    <div class="odoo-form-shell">
+        <div class="odoo-form-card">
             <form method="post" action="{{ route('employees.document-templates.update', $template) }}">
                 @method('put')
                 @include('employees.document-templates._form', ['submitLabel' => 'Update', 'template' => $template])

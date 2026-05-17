@@ -8,7 +8,7 @@
 
     <div class="card table-card">
         <div class="card-body">
-            <form method="post" action="{{ route('employees.update', $employee) }}">
+            <form method="post" action="{{ route('employees.update', $employee) }}" enctype="multipart/form-data">
                 @method('put')
                 @include('employees._form', ['submitLabel' => 'Update Employee'])
             </form>

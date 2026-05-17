@@ -5,7 +5,6 @@
         </a>
         <a href="{{ route('employees.index') }}" class="odoo-module-title">Employees</a>
         <a href="{{ route('employees.index') }}" @class(['active' => request()->routeIs('employees.*')])>Employees</a>
-        <a href="{{ route('employees.document-templates.index') }}" @class(['active' => request()->routeIs('employees.document-templates.*')])>Document Templates</a>
         <a href="{{ route('organization.index') }}">Departments</a>
         <a href="{{ route('loans.create') }}" @class(['active' => request()->routeIs('loans.*')])>Loans &amp; Advances</a>
         <a href="#">Reporting</a>

@@ -5,10 +5,7 @@
         <a href="{{ route('hr-admin.departments.index') }}">Departments</a>
         <a href="{{ route('hr-admin.announcements.create') }}">Announcements</a>
         <a href="{{ route('hr-admin.transfers.create') }}">Transfers</a>
-        <a href="{{ route('hr-admin.legal-cases.show') }}">Legal Management</a>
         <a href="{{ route('hr-admin.resignations.show') }}">Resignation</a>
-        <a href="{{ route('hr-admin.custodies.create') }}">Custody</a>
-        <a href="{{ route('hr-admin.shifts.working-times.index') }}">Shifts</a>
         <a href="#">Configuration</a>
     </div>
     <div class="hr-admin-nav-right">

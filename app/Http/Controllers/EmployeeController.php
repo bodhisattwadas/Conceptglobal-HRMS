@@ -10,8 +10,10 @@ use App\Models\EmployeeBankDetail;
 use App\Models\EmployeeWorkInformation;
 use App\Models\JobPosition;
 use App\Models\JobRole;
+use App\Models\MasterSetting;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -79,8 +81,10 @@ class EmployeeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validatedEmployee($request);
+        $employeePayload = $data['employee'];
+        $this->attachUploads($request, $employeePayload, null);
 
-        $employee = Employee::create($data['employee']);
+        $employee = Employee::create($employeePayload);
         EmployeeWorkInformation::create([
             ...$data['work'],
             'employee_id' => $employee->id,
@@ -119,9 +123,21 @@ class EmployeeController extends Controller
     public function createDocument(Employee $employee): View
     {
         $employee->load('workInformation.jobPosition');
+        $settings = MasterSetting::firstOrCreate([]);
+        $documentTypes = $settings->employee_document_types ?: [
+            'Aadhaar Card',
+            'PAN Card',
+            'Passport',
+            'Voter ID',
+            'Driving License',
+            'UAN Card',
+            'ESIC Card',
+            'Employment Contract',
+        ];
 
         return view('employees.documents-create', [
             'employee' => $employee,
+            'documentTypes' => $documentTypes,
         ]);
     }
 
@@ -238,8 +254,10 @@ class EmployeeController extends Controller
     public function update(Request $request, Employee $employee): RedirectResponse
     {
         $data = $this->validatedEmployee($request, $employee);
+        $employeePayload = $data['employee'];
+        $this->attachUploads($request, $employeePayload, $employee);
 
-        $employee->update($data['employee']);
+        $employee->update($employeePayload);
         $employee->workInformation()->updateOrCreate(
             ['employee_id' => $employee->id],
             $data['work']
@@ -292,6 +310,10 @@ class EmployeeController extends Controller
         $data = $request->validate([
             'badge_id' => ['nullable', 'string', 'max:50'],
             'profile_photo_url' => ['nullable', 'url', 'max:255'],
+            'profile_photo_file' => ['nullable', 'image', 'max:5120'],
+            'cv_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
+            'related_documents' => ['nullable', 'array'],
+            'related_documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,png,jpg,jpeg', 'max:10240'],
             'card_color' => ['nullable', 'string', 'max:20'],
             'first_name' => ['required', 'string', 'max:200'],
             'last_name' => ['nullable', 'string', 'max:200'],
@@ -393,6 +415,30 @@ class EmployeeController extends Controller
             ['label' => 'Timesheets', 'value' => '', 'icon' => 'bi-calendar3', 'url' => route('employees.timesheets.index', $employee)],
             ['label' => 'Loans', 'value' => 0, 'icon' => 'bi-bank'],
         ];
+    }
+
+    private function attachUploads(Request $request, array &$employeePayload, ?Employee $existing): void
+    {
+        if ($request->hasFile('profile_photo_file')) {
+            $employeePayload['profile_photo_url'] = Storage::url(
+                $request->file('profile_photo_file')->store('employees/photos', 'public')
+            );
+        }
+
+        if ($request->hasFile('cv_file')) {
+            $employeePayload['cv_file_path'] = $request->file('cv_file')->store('employees/cv', 'public');
+        }
+
+        if ($request->hasFile('related_documents')) {
+            $existingDocs = $existing?->related_document_paths ?? [];
+            $newDocs = [];
+            foreach ($request->file('related_documents') as $file) {
+                if ($file) {
+                    $newDocs[] = $file->store('employees/documents', 'public');
+                }
+            }
+            $employeePayload['related_document_paths'] = array_values(array_merge($existingDocs, $newDocs));
+        }
     }
 
     public function view(Request $request, string $view): View

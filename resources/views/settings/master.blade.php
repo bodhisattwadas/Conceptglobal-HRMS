@@ -34,6 +34,9 @@
                         @endforeach
                     </select>
                     <div class="text-secondary mt-2">Used as default currency in modules like Loan Management.</div>
+                    <label class="form-label fw-bold mt-4">Employee Document Types (India)</label>
+                    <textarea name="employee_document_types_text" class="form-control" rows="10" placeholder="One document type per line">{{ old('employee_document_types_text', $documentTypesText) }}</textarea>
+                    <div class="text-secondary mt-2">Shown in Employee > Documents > Document Type dropdown.</div>
                 </div>
             </main>
         </div>

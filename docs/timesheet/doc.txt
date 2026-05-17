@@ -1,0 +1,8 @@
+The timesheet facilitates the easy management of the time spent by the employees. It enables easy tracking of the time spent by an employee on a project or on a certain task/subtask. Access can be restricted to certain users for adding timesheets.
+
+Manage Time Spent By The Employees
+The total time required to complete a task can be specified at the time of the creation of the task. Then the assigned employee can add the timesheet of that task so that the manager and employee can easily track the total time spent, the progress (in percentage), the remaining time or the extra time taken by the employee, etc.
+
+Manage The Timesheets
+Manage all timesheets of employees in the Timesheets application. View the total time spent by the employees from here.
+

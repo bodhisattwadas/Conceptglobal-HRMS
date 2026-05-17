@@ -25,7 +25,12 @@
                             <i class="bi bi-box-arrow-up-right"></i>
                         </div>
                         <label>Document Type</label>
-                        <select name="document_type"><option></option><option>Passport</option><option>Contract</option></select>
+                        <select name="document_type">
+                            <option></option>
+                            @foreach(($documentTypes ?? []) as $type)
+                                <option value="{{ $type }}">{{ $type }}</option>
+                            @endforeach
+                        </select>
                         <label>Attachment</label>
                         <button class="odoo-secondary attachment" type="button"><i class="bi bi-paperclip"></i> Attachment</button>
                     </div>

@@ -91,6 +91,25 @@
                             <div class="odoo-form-line"><b>Gender</b><span>{{ $employee->gender ? ucfirst($employee->gender) : '' }}</span></div>
                             <div class="odoo-form-line"><b>Date of Birth</b><span>{{ $employee->date_of_birth?->format('m/d/Y') }}</span></div>
                             <div class="odoo-form-line"><b>Marital Status</b><span>{{ $employee->marital_status ? ucfirst($employee->marital_status) : '' }}</span></div>
+                            <div class="odoo-section-title">Documents</div>
+                            <div class="odoo-form-line">
+                                <b>CV</b>
+                                <span>
+                                    @if($employee->cv_file_path)
+                                        <a href="{{ \Illuminate\Support\Facades\Storage::url($employee->cv_file_path) }}" target="_blank">Download CV</a>
+                                    @endif
+                                </span>
+                            </div>
+                            <div class="odoo-form-line">
+                                <b>Related Docs</b>
+                                <span>
+                                    @if(!empty($employee->related_document_paths))
+                                        @foreach($employee->related_document_paths as $docPath)
+                                            <a href="{{ \Illuminate\Support\Facades\Storage::url($docPath) }}" target="_blank">{{ basename($docPath) }}</a>@if(!$loop->last), @endif
+                                        @endforeach
+                                    @endif
+                                </span>
+                            </div>
                         </div>
                         <div class="tab-pane fade" id="hr">
                             <div class="odoo-section-title">Status</div>

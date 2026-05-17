@@ -23,10 +23,7 @@ Route::prefix('admin/hr')->name('hr-admin.')->group(function (): void {
     Route::get('/employees', [HrAdministrationController::class, 'employees'])->name('employees.index');
     Route::get('/announcements/create', [HrAdministrationController::class, 'announcementCreate'])->name('announcements.create');
     Route::get('/transfers/create', [HrAdministrationController::class, 'transferCreate'])->name('transfers.create');
-    Route::get('/legal-cases/LC0001', [HrAdministrationController::class, 'legalCase'])->name('legal-cases.show');
     Route::get('/resignations/RES001', [HrAdministrationController::class, 'resignation'])->name('resignations.show');
-    Route::get('/custodies/create', [HrAdministrationController::class, 'custodyCreate'])->name('custodies.create');
-    Route::get('/shifts/working-times', [HrAdministrationController::class, 'shiftWorkingTimes'])->name('shifts.working-times.index');
 });
 
 Route::patch('/employees/{employee}/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
@@ -42,11 +39,6 @@ Route::post('/loans/{loan}/submit', [LoanController::class, 'submit'])->name('lo
 Route::post('/loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');
 Route::post('/loans/{loan}/refuse', [LoanController::class, 'refuse'])->name('loans.refuse');
 Route::post('/loans/{loan}/cancel', [LoanController::class, 'cancel'])->name('loans.cancel');
-Route::get('/employees/document-templates', [EmployeeController::class, 'documentTemplates'])->name('employees.document-templates.index');
-Route::get('/employees/document-templates/create', [EmployeeController::class, 'createDocumentTemplate'])->name('employees.document-templates.create');
-Route::post('/employees/document-templates', [EmployeeController::class, 'storeDocumentTemplate'])->name('employees.document-templates.store');
-Route::get('/employees/document-templates/{documentTemplate}/edit', [EmployeeController::class, 'editDocumentTemplate'])->name('employees.document-templates.edit');
-Route::put('/employees/document-templates/{documentTemplate}', [EmployeeController::class, 'updateDocumentTemplate'])->name('employees.document-templates.update');
 Route::resource('employees', EmployeeController::class)->except(['destroy']);
 
 Route::get('/attendances/check', [AttendanceController::class, 'checkInOut'])->name('attendance.check');
