@@ -81,10 +81,10 @@ class EmployeeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validatedEmployee($request);
+        $employee = Employee::create($data['employee']);
         $employeePayload = $data['employee'];
-        $this->attachUploads($request, $employeePayload, null);
-
-        $employee = Employee::create($employeePayload);
+        $this->attachUploads($request, $employeePayload, $employee);
+        $employee->update($employeePayload);
         EmployeeWorkInformation::create([
             ...$data['work'],
             'employee_id' => $employee->id,
@@ -143,14 +143,21 @@ class EmployeeController extends Controller
 
     public function storeDocument(Request $request, Employee $employee): RedirectResponse
     {
-        $request->validate([
+        $data = $request->validate([
             'document_number' => ['nullable', 'string', 'max:100'],
+            'document_type' => ['nullable', 'string', 'max:100'],
             'issue_date' => ['nullable', 'date'],
             'expiry_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
             'notification_type' => ['nullable', 'string', 'max:80'],
             'days' => ['nullable', 'integer', 'min:0'],
             'description' => ['nullable', 'string'],
+            'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,png,jpg,jpeg', 'max:10240'],
         ]);
+
+        if ($request->hasFile('attachment')) {
+            $folder = $this->employeeFolder($employee).'/documents';
+            $request->file('attachment')->store($folder, 'public');
+        }
 
         return redirect()->route('employees.show', $employee)->with('status', 'Document draft saved.');
     }
@@ -419,14 +426,20 @@ class EmployeeController extends Controller
 
     private function attachUploads(Request $request, array &$employeePayload, ?Employee $existing): void
     {
+        if (! $existing) {
+            return;
+        }
+
+        $baseFolder = $this->employeeFolder($existing);
+
         if ($request->hasFile('profile_photo_file')) {
             $employeePayload['profile_photo_url'] = Storage::url(
-                $request->file('profile_photo_file')->store('employees/photos', 'public')
+                $request->file('profile_photo_file')->store($baseFolder.'/photo', 'public')
             );
         }
 
         if ($request->hasFile('cv_file')) {
-            $employeePayload['cv_file_path'] = $request->file('cv_file')->store('employees/cv', 'public');
+            $employeePayload['cv_file_path'] = $request->file('cv_file')->store($baseFolder.'/cv', 'public');
         }
 
         if ($request->hasFile('related_documents')) {
@@ -434,11 +447,20 @@ class EmployeeController extends Controller
             $newDocs = [];
             foreach ($request->file('related_documents') as $file) {
                 if ($file) {
-                    $newDocs[] = $file->store('employees/documents', 'public');
+                    $newDocs[] = $file->store($baseFolder.'/related-documents', 'public');
                 }
             }
             $employeePayload['related_document_paths'] = array_values(array_merge($existingDocs, $newDocs));
         }
+    }
+
+    private function employeeFolder(Employee $employee): string
+    {
+        $name = trim($employee->full_name) !== '' ? $employee->full_name : 'Employee';
+        $cleanName = preg_replace('/[^A-Za-z0-9]+/', '-', $name) ?: 'Employee';
+        $cleanName = trim($cleanName, '-');
+
+        return 'employees/'.$cleanName.'-'.$employee->id;
     }
 
     public function view(Request $request, string $view): View

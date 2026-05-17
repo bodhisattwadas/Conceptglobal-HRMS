@@ -7,7 +7,7 @@
     @include('employees._module_nav')
 
     <div class="odoo-form-title">Employees / {{ $employee->full_name }} / Documents / New</div>
-    <form method="post" action="{{ route('employees.documents.store', $employee) }}">
+    <form method="post" action="{{ route('employees.documents.store', $employee) }}" enctype="multipart/form-data">
         @csrf
         <div class="odoo-doc-actions">
             <button class="odoo-primary">Save</button>
@@ -32,7 +32,7 @@
                             @endforeach
                         </select>
                         <label>Attachment</label>
-                        <button class="odoo-secondary attachment" type="button"><i class="bi bi-paperclip"></i> Attachment</button>
+                        <input type="file" name="attachment" class="attachment-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
                     </div>
                     <div>
                         <label>Issue Date</label>
@@ -99,7 +99,15 @@
         input:focus { background: #d8d3ff; border-color: #7e57a3; outline: none; }
         .input-with-icon { display: flex; gap: 4px; }
         .input-with-icon i { color: #6e4c94; font-size: 20px; }
-        .attachment { justify-self: start; padding: 5px 10px; }
+        .attachment-input {
+            border: 1px solid #ccd1d8;
+            border-radius: 3px;
+            font-size: 12px;
+            height: auto;
+            min-height: 26px;
+            padding: 3px 5px;
+            width: 100%;
+        }
         .odoo-doc-tab {
             border: 1px solid #d8dde6;
             border-bottom: 0;
