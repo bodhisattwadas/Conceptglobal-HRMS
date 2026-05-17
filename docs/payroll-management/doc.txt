@@ -1,0 +1,13 @@
+OpenHRMS Payroll outlines the entire payroll process of a firm. It helps to generate payroll which can be easy to access. Gives advanced payslips for a single employee and batch of employees too. Also it can be generated based on leaves, salary rules and timesheet.
+
+Employee Contract
+Payroll can be generated based on the salary structure associated within the employee contract. Employee contract plays a vital role in their payslips. Also monthly advantages based on each employee can be configured within the contract.
+
+Salary Rule & Salary Structure
+Payslips of employees are created based on the configured salary structure. Salary structure are composed of different salary rules which some are deducting and some are benefits like allowances. Each salary structure has a reference and their own unique name.
+
+Salary Rules and Allowances
+Each salary structure has different records of salary rules. Rules are the advanced features of each payslips. Some of them are deducting and some are allowances. Which encourages and helps the employees in their financial conditions. Salary rules are configurable based on different conditions and the amount can be configured.
+
+Payslip Batches
+Rather than payslips for each employee, OHRMS payroll helps to generate payslips as like batches. Which helps to generate payslips of the employees who are under one salary structure as a grouped one.

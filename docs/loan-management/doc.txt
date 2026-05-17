@@ -1,0 +1,15 @@
+Loan Management Module
+
+The module enables the employees to request loans with details such as amount, the installment payment dates, the number of installments, attachments, etc. There is an option to Approve or Reject the request.
+
+Create Request for Loan
+The employees can create requests for loan by adding the Loan Amount, No. of Installment, and Payment Start Date and submit it for approval.
+
+Payment Details
+The installment payment details are listed with the details such as the date and the amount, on clicking the 'Compute Installment' button.
+
+Approval
+The managers have options to approve and refuse the request for loans. The request can be approved after adding the Treasury Account, Loan Account, and Journal.
+
+1. Loan approval checklist :
+Employee Must be working for last 6 months 

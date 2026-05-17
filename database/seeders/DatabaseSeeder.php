@@ -8,6 +8,8 @@ use App\Models\AttendanceRecord;
 use App\Models\AttendanceRegularizationRequest;
 use App\Models\Department;
 use App\Models\Employee;
+use App\Models\EmployeeLoan;
+use App\Models\EmployeeLoanInstallment;
 use App\Models\EmployeeWorkInformation;
 use App\Models\JobPosition;
 use App\Models\JobRole;
@@ -238,6 +240,8 @@ class DatabaseSeeder extends Seeder
             'employee_shift_enabled' => true,
             'vacation_management_enabled' => true,
         ]);
+
+        $this->seedLoanModuleDemoData($company);
     }
 
     private function seedEmployeeCloneRoster(Company $company, User $user): void
@@ -366,5 +370,63 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
+    }
+
+    private function seedLoanModuleDemoData(Company $company): void
+    {
+        $jeffrey = Employee::where('first_name', 'Jeffrey')->where('last_name', 'Kelly')->first();
+        if (! $jeffrey) {
+            return;
+        }
+
+        $loan = EmployeeLoan::query()->firstOrCreate(
+            ['loan_number' => 'LO/0001'],
+            [
+                'employee_id' => $jeffrey->id,
+                'department_id' => $jeffrey->workInformation?->department_id,
+                'job_position_id' => $jeffrey->workInformation?->job_position_id,
+                'company_id' => $company->id,
+                'request_date' => '2022-06-03',
+                'loan_amount' => 6000.00,
+                'number_of_installments' => 3,
+                'payment_start_date' => '2022-03-31',
+                'currency_code' => 'USD',
+                'status' => 'submitted',
+                'total_amount' => 6000.00,
+                'total_paid_amount' => 0,
+                'balance_amount' => 6000.00,
+            ]
+        );
+
+        $rows = [
+            ['2022-03-31', 2000.00],
+            ['2022-04-30', 2000.00],
+            ['2022-05-30', 2000.00],
+        ];
+        foreach ($rows as $i => [$date, $amount]) {
+            EmployeeLoanInstallment::query()->firstOrCreate(
+                ['employee_loan_id' => $loan->id, 'installment_no' => $i + 1],
+                ['payment_date' => $date, 'amount' => $amount, 'paid_amount' => 0, 'remaining_amount' => $amount, 'status' => 'pending']
+            );
+        }
+
+        EmployeeLoan::query()->firstOrCreate(
+            ['loan_number' => 'LO/0002'],
+            [
+                'employee_id' => $jeffrey->id,
+                'department_id' => $jeffrey->workInformation?->department_id,
+                'job_position_id' => $jeffrey->workInformation?->job_position_id,
+                'company_id' => $company->id,
+                'request_date' => '2022-06-10',
+                'loan_amount' => 3000.00,
+                'number_of_installments' => 3,
+                'payment_start_date' => '2022-06-30',
+                'currency_code' => 'USD',
+                'status' => 'draft',
+                'total_amount' => 3000.00,
+                'total_paid_amount' => 0,
+                'balance_amount' => 3000.00,
+            ]
+        );
     }
 }

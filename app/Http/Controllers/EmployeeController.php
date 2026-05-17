@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\Department;
+use App\Models\DocumentTemplate;
 use App\Models\Employee;
 use App\Models\EmployeeBankDetail;
 use App\Models\EmployeeWorkInformation;
@@ -150,6 +151,78 @@ class EmployeeController extends Controller
             ],
             'totalHours' => '05:00',
         ]);
+    }
+
+    public function documentTemplates(Request $request): View
+    {
+        $templates = DocumentTemplate::query()
+            ->when($request->string('search')->toString(), function ($query, string $search): void {
+                $query->where(fn ($query) => $query
+                    ->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%"));
+            })
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('employees.document-templates.index', [
+            'templates' => $templates,
+        ]);
+    }
+
+    public function createDocumentTemplate(): View
+    {
+        return view('employees.document-templates.create');
+    }
+
+    public function storeDocumentTemplate(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:40', 'unique:document_templates,code'],
+            'name' => ['required', 'string', 'max:140'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'content' => ['nullable', 'string'],
+            'is_active' => ['nullable'],
+        ]);
+
+        DocumentTemplate::create([
+            'code' => strtoupper(trim($data['code'])),
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'content' => $data['content'] ?? null,
+            'is_active' => $request->boolean('is_active', true),
+        ]);
+
+        return redirect()->route('employees.document-templates.index')->with('status', 'Document template created.');
+    }
+
+    public function editDocumentTemplate(DocumentTemplate $documentTemplate): View
+    {
+        return view('employees.document-templates.edit', [
+            'template' => $documentTemplate,
+        ]);
+    }
+
+    public function updateDocumentTemplate(Request $request, DocumentTemplate $documentTemplate): RedirectResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', 'max:40', 'unique:document_templates,code,'.$documentTemplate->id],
+            'name' => ['required', 'string', 'max:140'],
+            'description' => ['nullable', 'string', 'max:255'],
+            'content' => ['nullable', 'string'],
+            'is_active' => ['nullable'],
+        ]);
+
+        $documentTemplate->update([
+            'code' => strtoupper(trim($data['code'])),
+            'name' => $data['name'],
+            'description' => $data['description'] ?? null,
+            'content' => $data['content'] ?? null,
+            'is_active' => $request->boolean('is_active'),
+        ]);
+
+        return redirect()->route('employees.document-templates.index')->with('status', 'Document template updated.');
     }
 
     public function edit(Employee $employee): View

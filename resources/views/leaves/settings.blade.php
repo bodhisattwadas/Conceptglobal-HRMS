@@ -24,10 +24,13 @@
         <div class="settings-shell">
             <aside class="settings-sidebar">
                 @foreach (['General Settings', 'Website', 'Leaves', 'Inventory', 'Invoicing', 'Payroll', 'Project', 'Timesheets', 'Events', 'Employees', 'Recruitment', 'Attendances', 'Expenses'] as $item)
-                    <div @class(['settings-link', 'active' => $item === 'Leaves'])>
-                        <i class="bi bi-gear-fill"></i>
-                        {{ $item }}
-                    </div>
+                    @if($item === 'General Settings')
+                        <a href="{{ route('settings.master.edit') }}" class="settings-link"><i class="bi bi-gear-fill"></i>{{ $item }}</a>
+                    @elseif($item === 'Leaves')
+                        <a href="{{ route('leaves.settings') }}" class="settings-link active"><i class="bi bi-gear-fill"></i>{{ $item }}</a>
+                    @else
+                        <div class="settings-link"><i class="bi bi-gear-fill"></i>{{ $item }}</div>
+                    @endif
                 @endforeach
             </aside>
             <main class="settings-content">
@@ -86,9 +89,11 @@
         }
         .settings-link {
             align-items: center;
+            color: inherit;
             display: flex;
             gap: 10px;
             padding: 9px 16px;
+            text-decoration: none;
         }
         .settings-link.active {
             background: #35404a;

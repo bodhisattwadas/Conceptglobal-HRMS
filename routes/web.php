@@ -5,6 +5,8 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\HrAdministrationController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\LoanController;
+use App\Http\Controllers\MasterSettingController;
 use App\Http\Controllers\OrganizationController;
 use Illuminate\Support\Facades\Route;
 
@@ -32,6 +34,19 @@ Route::patch('/employees/{employee}/restore', [EmployeeController::class, 'resto
 Route::get('/employees/{employee}/documents/create', [EmployeeController::class, 'createDocument'])->name('employees.documents.create');
 Route::post('/employees/{employee}/documents', [EmployeeController::class, 'storeDocument'])->name('employees.documents.store');
 Route::get('/employees/{employee}/timesheets', [EmployeeController::class, 'timesheets'])->name('employees.timesheets.index');
+Route::get('/loans/create', [LoanController::class, 'create'])->name('loans.create');
+Route::post('/loans', [LoanController::class, 'store'])->name('loans.store');
+Route::get('/loans/{loan}', [LoanController::class, 'show'])->name('loans.show');
+Route::post('/loans/{loan}/compute-installments', [LoanController::class, 'computeInstallments'])->name('loans.compute-installments');
+Route::post('/loans/{loan}/submit', [LoanController::class, 'submit'])->name('loans.submit');
+Route::post('/loans/{loan}/approve', [LoanController::class, 'approve'])->name('loans.approve');
+Route::post('/loans/{loan}/refuse', [LoanController::class, 'refuse'])->name('loans.refuse');
+Route::post('/loans/{loan}/cancel', [LoanController::class, 'cancel'])->name('loans.cancel');
+Route::get('/employees/document-templates', [EmployeeController::class, 'documentTemplates'])->name('employees.document-templates.index');
+Route::get('/employees/document-templates/create', [EmployeeController::class, 'createDocumentTemplate'])->name('employees.document-templates.create');
+Route::post('/employees/document-templates', [EmployeeController::class, 'storeDocumentTemplate'])->name('employees.document-templates.store');
+Route::get('/employees/document-templates/{documentTemplate}/edit', [EmployeeController::class, 'editDocumentTemplate'])->name('employees.document-templates.edit');
+Route::put('/employees/document-templates/{documentTemplate}', [EmployeeController::class, 'updateDocumentTemplate'])->name('employees.document-templates.update');
 Route::resource('employees', EmployeeController::class)->except(['destroy']);
 
 Route::get('/attendances/check', [AttendanceController::class, 'checkInOut'])->name('attendance.check');
@@ -57,6 +72,8 @@ Route::patch('/leaves/requests/{leaveRequest}/refuse', [LeaveController::class, 
 Route::patch('/leaves/requests/{leaveRequest}/draft', [LeaveController::class, 'markDraft'])->name('leaves.requests.draft');
 Route::get('/leaves/settings', [LeaveController::class, 'settings'])->name('leaves.settings');
 Route::post('/leaves/settings', [LeaveController::class, 'updateSettings'])->name('leaves.settings.update');
+Route::get('/settings/master', [MasterSettingController::class, 'edit'])->name('settings.master.edit');
+Route::post('/settings/master', [MasterSettingController::class, 'update'])->name('settings.master.update');
 
 Route::get('/employees/view/{view}', [EmployeeController::class, 'view'])->name('employees.view');
 Route::post('/employees/bulk-action', [EmployeeController::class, 'bulkAction'])->name('employees.bulk-action');
