@@ -1,0 +1,25 @@
+Attendance and Leaves
+Real-time attendance processing with multiple options for capturing attendance and biometric hardware integration. Open HRMS attendance tracking system is integrated with payroll and leave management system; delivering you all the intuitive features needed for an efficient attendance management system.
+
+Multiple Attendance Capturing Methods
+The attendance of employees can be captured from multiple sources.
+> Employee login portal where he/she can mark his attendance.
+> Third-party hardware like Biometric devices.
+> Kiosk mode, from which the employee can mark his attendance using their PIN or swiping the ID card.
+
+Biometric Device Configuration
+Integrate thumbing or face-detection biometric devices, ensure flawless and seamless attendance capturing.
+
+Attendance Regularization
+Manage attendances of employees who have gone for onsite work or any company need. A regularization request can be created, and the attendance will be added to the registry on approving it.
+
+Leave Policy
+Configure different types of leaves like sick leave, compensatory leave, unpaid leave, etc., and create a transparent leave policy for your company.
+
+Automatic Leave Request
+Configure a leave request email, and every email in the desired format will automatically get converted to a leave request in Open HRMS.
+
+Leave Approval
+Set multiple approval points for particular leaves so that concerned authorities can effectively review the leave requests.
+Manage Vacation
+Receive employee vacation requests and handle them more organized. Get the leave notification and sanction vacation with/without salary. View the overlapping leave requests and manage them appropriately, assign the pending tasks to others, and more with Open HRMS.

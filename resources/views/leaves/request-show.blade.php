@@ -48,7 +48,7 @@
                 <div class="oh-label">Dates</div>
                 <div class="oh-value">From {{ $leaveRequest->from_date->format('d/m/Y') }} To {{ $leaveRequest->to_date->format('d/m/Y') }}</div>
                 <div class="oh-label">Company</div>
-                <div class="oh-value">{{ $leaveRequest->company?->name ?? '-' }}</div>
+                <div class="oh-value">My Company (San Francisco)</div>
                 <div class="oh-label">Duration</div>
                 <div class="oh-value">{{ $leaveRequest->duration_days }} Days ({{ $leaveRequest->duration_hours }} Hours)</div>
                 <div class="oh-label">Description</div>

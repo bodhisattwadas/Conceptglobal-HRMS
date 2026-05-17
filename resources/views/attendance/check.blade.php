@@ -1,7 +1,8 @@
-@extends('layouts.openhrms', ['title' => 'Attendances'])
-@include('attendance._nav')
+@extends('layouts.app', ['heading' => 'Attendances', 'subheading' => 'Check In / Check Out'])
 
 @section('content')
+    @include('attendance._nav')
+
     <div class="attendance-kiosk-bg">
         <section class="check-card">
             <div class="check-cover"></div>
@@ -35,12 +36,14 @@
             background: #aaa;
             display: flex;
             justify-content: center;
-            min-height: calc(100vh - 40px);
+            margin: 0 -1.5rem -1.5rem;
+            min-height: calc(100vh - 162px);
             padding: 4rem 1rem;
         }
         .check-card {
             background: #fff;
             border-radius: 2px;
+            box-shadow: 0 1px 1px rgba(0,0,0,.1);
             overflow: hidden;
             position: relative;
             text-align: center;

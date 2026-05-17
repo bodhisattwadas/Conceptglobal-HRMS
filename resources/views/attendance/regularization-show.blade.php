@@ -1,7 +1,8 @@
-@extends('layouts.openhrms', ['title' => 'Regularization Request'])
-@include('attendance._nav')
+@extends('layouts.app', ['heading' => 'Attendances', 'subheading' => 'Regularization Request'])
 
 @section('content')
+    @include('attendance._nav')
+
     <div class="oh-page-title">
         <h1>Regularization Request / {{ $regularization->employee->full_name }}</h1>
         <div class="small text-secondary">1 / 1 &nbsp; <i class="bi bi-chevron-left"></i> &nbsp; <i class="bi bi-chevron-right"></i></div>
@@ -66,3 +67,13 @@
         </div>
     </div>
 @endsection
+
+@push('styles')
+    <style>
+        .oh-sheet { max-width: 1140px; min-height: 330px; padding-top: 38px; }
+        .oh-chatter { max-width: 1140px; }
+        .oh-message { border: 0; }
+        .text-purple { color: #6e36a2; }
+        .content > section { padding-bottom: 0 !important; }
+    </style>
+@endpush

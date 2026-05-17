@@ -1,10 +1,11 @@
-@extends('layouts.openhrms', ['title' => 'Employees / '.$employee->full_name.' / Documents / New'])
-
-@section('module_nav')
-    @include('employees._module_nav')
-@endsection
+@extends('layouts.app', [
+    'heading' => 'Employees',
+    'subheading' => $employee->full_name.' / Documents / New',
+])
 
 @section('content')
+    @include('employees._module_nav')
+
     <div class="odoo-form-title">Employees / {{ $employee->full_name }} / Documents / New</div>
     <form method="post" action="{{ route('employees.documents.store', $employee) }}">
         @csrf
@@ -49,6 +50,8 @@
 @push('styles')
     <style>
         body { background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 13px; }
+        .odoo-topbar { margin: -1.5rem -1.5rem 0; }
+        .content > section { padding-bottom: 0 !important; }
         .odoo-form-title { color: #6e4c94; font-size: 18px; padding: 11px 15px 10px; }
         .odoo-doc-actions { background: #fff; border-bottom: 1px solid #d9dde4; padding: 0 15px 9px; }
         .odoo-primary, .odoo-secondary {

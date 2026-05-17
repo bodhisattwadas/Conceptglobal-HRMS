@@ -110,6 +110,10 @@
                 <i class="bi bi-people"></i>
                 Employees
             </a>
+            <a href="{{ route('hr-admin.departments.index') }}" @class(['active' => request()->routeIs('hr-admin.*')])>
+                <i class="bi bi-person-workspace"></i>
+                HR Administration
+            </a>
             <a href="{{ route('attendance.check') }}" @class(['active' => request()->routeIs('attendance.*')])>
                 <i class="bi bi-calendar-check"></i>
                 Attendance

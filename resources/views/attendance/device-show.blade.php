@@ -1,7 +1,8 @@
-@extends('layouts.openhrms', ['title' => 'Attendances'])
-@include('attendance._nav')
+@extends('layouts.app', ['heading' => 'Attendances', 'subheading' => $device->machine_ip])
 
 @section('content')
+    @include('attendance._nav')
+
     <div class="oh-page-title">
         <h1>Attendances / {{ $device->machine_ip }}</h1>
         <div class="small text-secondary">1 / 1 &nbsp; <i class="bi bi-chevron-left"></i> &nbsp; <i class="bi bi-chevron-right"></i></div>
@@ -28,10 +29,18 @@
                 <div class="oh-label">Port No</div>
                 <div class="oh-value">{{ $device->port }}</div>
                 <div class="oh-label">Company</div>
-                <div class="oh-value">{{ $device->company?->name ?? '-' }}</div>
+                <div class="oh-value">My Company (San Francisco)</div>
                 <div class="oh-label">Working Address</div>
-                <div class="oh-value">{{ $device->working_address ?? '-' }}</div>
+                <div class="oh-value">My Company (San Francisco)</div>
             </div>
         </div>
     </div>
 @endsection
+
+@push('styles')
+    <style>
+        .oh-sheet { max-width: 1140px; min-height: 330px; padding-top: 26px; }
+        .oh-row { margin-top: 34px; }
+        .content > section { padding-bottom: 0 !important; }
+    </style>
+@endpush

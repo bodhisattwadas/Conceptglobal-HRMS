@@ -189,6 +189,49 @@ class DatabaseSeeder extends Seeder
             ['project' => 'Research & Development', 'description' => 'Complete the integration work']
         );
 
+        $mitchellEmployee = Employee::where('first_name', 'Mitchell')->where('last_name', 'Admin')->first();
+        $ronnieEmployee = Employee::where('first_name', 'Ronnie')->where('last_name', 'Hart')->first();
+
+        if ($mitchellEmployee && $compensatory) {
+            $mitchellLeave = LeaveRequest::query()->firstOrCreate(
+                [
+                    'employee_id' => $mitchellEmployee->id,
+                    'leave_type_id' => $compensatory->id,
+                    'from_date' => '2022-02-07',
+                ],
+                [
+                    'company_id' => $company->id,
+                    'to_date' => '2022-02-09',
+                    'duration_days' => 2.81,
+                    'duration_hours' => 22.50,
+                    'remaining_legal_leaves' => 39.00,
+                    'description' => 'Trip with Family',
+                    'status' => 'to_approve',
+                ]
+            );
+
+            LeavePendingWork::query()->firstOrCreate(
+                ['leave_request_id' => $mitchellLeave->id, 'task' => 'Meeting Room Furnitures'],
+                ['project' => 'Office Design', 'description' => 'Check Furnitures']
+            );
+            LeavePendingWork::query()->firstOrCreate(
+                ['leave_request_id' => $mitchellLeave->id, 'task' => 'Social network integration'],
+                ['project' => 'Research & Development', 'description' => 'Complete the integration work']
+            );
+        }
+
+        if ($ronnieEmployee) {
+            AttendanceRegularizationRequest::query()->firstOrCreate(
+                ['employee_id' => $ronnieEmployee->id, 'category' => 'Onsight'],
+                [
+                    'reason' => 'Going for onsight',
+                    'from_at' => '2021-02-23 15:47:56',
+                    'to_at' => '2021-02-26 15:47:56',
+                    'status' => 'requested',
+                ]
+            );
+        }
+
         LeaveSetting::query()->firstOrCreate([], [
             'leave_reminder_enabled' => true,
             'leave_reminder_days_before' => 3,

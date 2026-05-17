@@ -7,6 +7,7 @@ use App\Models\AttendanceRecord;
 use App\Models\AttendanceRegularizationRequest;
 use App\Models\Employee;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -14,7 +15,11 @@ class AttendanceController extends Controller
 {
     public function checkInOut(): View
     {
-        $employee = Employee::with('workInformation.jobPosition')->firstOrFail();
+        $employee = Employee::with('workInformation.jobPosition')
+            ->where('first_name', 'Mitchell')
+            ->where('last_name', 'Admin')
+            ->first()
+            ?? Employee::with('workInformation.jobPosition')->firstOrFail();
         $today = now()->toDateString();
         $record = AttendanceRecord::query()
             ->where('employee_id', $employee->id)
@@ -89,6 +94,36 @@ class AttendanceController extends Controller
         $regularization->update(['status' => 'rejected']);
 
         return back()->with('status', 'Regularization rejected.');
+    }
+
+    public function reporting(): View
+    {
+        $today = now()->toDateString();
+
+        $presentToday = AttendanceRecord::query()->whereDate('attendance_date', $today)->distinct('employee_id')->count('employee_id');
+        $openToday = AttendanceRecord::query()->whereDate('attendance_date', $today)->whereNull('check_out_at')->count();
+        $regularizationPending = AttendanceRegularizationRequest::query()->where('status', 'requested')->count();
+        $workedMinutesToday = (int) AttendanceRecord::query()->whereDate('attendance_date', $today)->sum('worked_minutes');
+
+        $summary = AttendanceRecord::query()
+            ->select([
+                'employee_id',
+                DB::raw('COUNT(*) as days_present'),
+                DB::raw('SUM(worked_minutes) as total_worked_minutes'),
+            ])
+            ->with('employee.workInformation.department')
+            ->groupBy('employee_id')
+            ->orderByDesc('days_present')
+            ->limit(8)
+            ->get();
+
+        return view('attendance.reporting', [
+            'presentToday' => $presentToday,
+            'openToday' => $openToday,
+            'regularizationPending' => $regularizationPending,
+            'workedToday' => $this->formatMinutes($workedMinutesToday),
+            'summary' => $summary,
+        ]);
     }
 
     private function formatMinutes(int $minutes): string

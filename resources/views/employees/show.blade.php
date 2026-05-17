@@ -1,10 +1,11 @@
-@extends('layouts.openhrms', ['title' => 'Employees / '.$employee->full_name])
-
-@section('module_nav')
-    @include('employees._module_nav')
-@endsection
+@extends('layouts.app', [
+    'heading' => 'Employees',
+    'subheading' => $employee->full_name,
+])
 
 @section('content')
+    @include('employees._module_nav')
+
     <div class="odoo-form-title">Employees / {{ $employee->full_name }}</div>
     <div class="odoo-actionbar">
         <div>
@@ -139,6 +140,8 @@
 @push('styles')
     <style>
         body { background: #fff; font-family: Arial, Helvetica, sans-serif; font-size: 13px; }
+        .odoo-topbar { margin: -1.5rem -1.5rem 0; }
+        .content > section { padding-bottom: 0 !important; }
         .odoo-form-title { color: #6e4c94; font-size: 18px; padding: 13px 15px 8px; }
         .odoo-actionbar {
             align-items: center;

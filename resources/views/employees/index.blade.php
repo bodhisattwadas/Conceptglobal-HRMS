@@ -1,10 +1,11 @@
-@extends('layouts.openhrms', ['title' => 'Employees'])
-
-@section('module_nav')
-    @include('employees._module_nav')
-@endsection
+@extends('layouts.app', [
+    'heading' => 'Employees',
+    'subheading' => 'Employee database',
+])
 
 @section('content')
+    @include('employees._module_nav')
+
     <div class="odoo-list-page">
         <div class="odoo-list-header">
             <div>
@@ -143,6 +144,8 @@
 @push('styles')
     <style>
         body { background: #f5f5f5; color: #1f2a44; font-family: Arial, Helvetica, sans-serif; }
+        .odoo-topbar { margin: -1.5rem -1.5rem 0; }
+        .content > section { padding-bottom: 0 !important; }
         .odoo-list-page { background: #fff; min-height: calc(100vh - 44px); }
         .odoo-list-header {
             align-items: start;

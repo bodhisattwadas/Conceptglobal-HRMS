@@ -1,7 +1,8 @@
-@extends('layouts.openhrms', ['title' => 'Attendances'])
-@include('attendance._nav')
+@extends('layouts.app', ['heading' => 'Attendances', 'subheading' => 'Attendance records'])
 
 @section('content')
+    @include('attendance._nav')
+
     <div class="oh-page-title">
         <h1>Attendances</h1>
         <form class="oh-searchbar">
@@ -42,3 +43,9 @@
     </table>
     <div class="p-3">{{ $records->links() }}</div>
 @endsection
+
+@push('styles')
+    <style>
+        .content > section { padding-bottom: 0 !important; }
+    </style>
+@endpush

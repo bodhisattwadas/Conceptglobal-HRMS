@@ -1,10 +1,11 @@
-@extends('layouts.openhrms', ['title' => 'Employees / '.$employee->full_name.' / Timesheets'])
-
-@section('module_nav')
-    @include('employees._module_nav')
-@endsection
+@extends('layouts.app', [
+    'heading' => 'Employees',
+    'subheading' => $employee->full_name.' / Timesheets',
+])
 
 @section('content')
+    @include('employees._module_nav')
+
     <div class="odoo-timesheet-page">
         <div class="odoo-timesheet-title">Employees / {{ $employee->full_name }} / Timesheets</div>
         <div class="odoo-timesheet-header">
@@ -55,6 +56,8 @@
 @push('styles')
     <style>
         body { background: #f5f6f8; font-family: Arial, Helvetica, sans-serif; font-size: 13px; }
+        .odoo-topbar { margin: -1.5rem -1.5rem 0; }
+        .content > section { padding-bottom: 0 !important; }
         .odoo-timesheet-page { background: #fff; min-height: calc(100vh - 44px); }
         .odoo-timesheet-title { color: #6e4c94; font-size: 18px; padding: 11px 15px; }
         .odoo-timesheet-header {

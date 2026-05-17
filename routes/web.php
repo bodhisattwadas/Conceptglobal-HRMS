@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\HrAdministrationController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\OrganizationController;
@@ -14,6 +15,17 @@ Route::post('/organization/companies', [OrganizationController::class, 'storeCom
 Route::post('/organization/departments', [OrganizationController::class, 'storeDepartment'])->name('organization.departments.store');
 Route::post('/organization/job-positions', [OrganizationController::class, 'storeJobPosition'])->name('organization.job-positions.store');
 Route::post('/organization/job-roles', [OrganizationController::class, 'storeJobRole'])->name('organization.job-roles.store');
+
+Route::prefix('admin/hr')->name('hr-admin.')->group(function (): void {
+    Route::get('/departments', [HrAdministrationController::class, 'departments'])->name('departments.index');
+    Route::get('/employees', [HrAdministrationController::class, 'employees'])->name('employees.index');
+    Route::get('/announcements/create', [HrAdministrationController::class, 'announcementCreate'])->name('announcements.create');
+    Route::get('/transfers/create', [HrAdministrationController::class, 'transferCreate'])->name('transfers.create');
+    Route::get('/legal-cases/LC0001', [HrAdministrationController::class, 'legalCase'])->name('legal-cases.show');
+    Route::get('/resignations/RES001', [HrAdministrationController::class, 'resignation'])->name('resignations.show');
+    Route::get('/custodies/create', [HrAdministrationController::class, 'custodyCreate'])->name('custodies.create');
+    Route::get('/shifts/working-times', [HrAdministrationController::class, 'shiftWorkingTimes'])->name('shifts.working-times.index');
+});
 
 Route::patch('/employees/{employee}/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
 Route::patch('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
@@ -29,6 +41,11 @@ Route::get('/attendances/devices/{device}', [AttendanceController::class, 'devic
 Route::get('/attendances/regularization/{regularization}', [AttendanceController::class, 'regularization'])->name('attendance.regularization.show');
 Route::patch('/attendances/regularization/{regularization}/approve', [AttendanceController::class, 'approveRegularization'])->name('attendance.regularization.approve');
 Route::patch('/attendances/regularization/{regularization}/reject', [AttendanceController::class, 'rejectRegularization'])->name('attendance.regularization.reject');
+Route::get('/attendances/reporting', [AttendanceController::class, 'reporting'])->name('attendance.reporting');
+Route::get('/attendance/check', [AttendanceController::class, 'checkInOut']);
+Route::get('/attendance/machines/{device}', [AttendanceController::class, 'device']);
+Route::get('/attendance/regularizations/{regularization}', [AttendanceController::class, 'regularization']);
+Route::get('/attendance/reporting', [AttendanceController::class, 'reporting']);
 
 Route::get('/leaves/types', [LeaveController::class, 'types'])->name('leaves.types');
 Route::get('/leaves/requests', [LeaveController::class, 'requests'])->name('leaves.requests');

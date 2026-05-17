@@ -16,7 +16,9 @@ class LeaveController extends Controller
     public function types(): View
     {
         return view('leaves.types', [
-            'types' => LeaveType::orderBy('name')->paginate(20),
+            'types' => LeaveType::orderByRaw("CASE name WHEN 'Paid Time Off' THEN 1 WHEN 'Compensatory Days' THEN 2 WHEN 'Sick Time Off' THEN 3 WHEN 'Unpaid' THEN 4 WHEN 'Parental Leaves' THEN 5 WHEN 'Extra Hours' THEN 6 ELSE 99 END")
+                ->orderBy('name')
+                ->paginate(20),
         ]);
     }
 
