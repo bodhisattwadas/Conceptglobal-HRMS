@@ -9,14 +9,6 @@
             <a href="{{ route('leaves.settings') }}">Configuration</a>
             <a href="#">Flight Tickets</a>
         </div>
-        <div class="v15-right">
-            <span><i class="bi bi-chat-fill"></i><b>5</b></span>
-            <span><i class="bi bi-bell-fill"></i></span>
-            <span><i class="bi bi-clock-history"></i><b>14</b></span>
-            <a href="#">My Company (San Francisco)</a>
-            <span class="v15-avatar">MA</span>
-            <span>Mitchell Admin</span>
-        </div>
 </nav>
 
 @once

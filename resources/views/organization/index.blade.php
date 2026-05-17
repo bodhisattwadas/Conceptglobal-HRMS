@@ -15,13 +15,6 @@
             <a href="{{ route('organization.index', ['menu' => 'job-positions']) }}" @class(['active' => $menu === 'job-positions'])>Job Positions</a>
             <a href="{{ route('organization.index', ['menu' => 'job-roles']) }}" @class(['active' => $menu === 'job-roles'])>Job Roles</a>
         </div>
-        <div class="odoo-top-right">
-            <span class="odoo-icon-badge"><i class="bi bi-chat-fill"></i><b>5</b></span>
-            <span><i class="bi bi-bell-fill"></i></span>
-            <span class="odoo-icon-badge"><i class="bi bi-clock-history"></i><b>12</b></span>
-            <span class="odoo-user-pic">MA</span>
-            <span>Mitchell Admin</span>
-        </div>
     </nav>
     <div class="row g-4">
         @if($menu === 'companies')

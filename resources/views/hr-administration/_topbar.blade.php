@@ -8,13 +8,6 @@
         <a href="{{ route('hr-admin.resignations.show') }}">Resignation</a>
         <a href="#">Configuration</a>
     </div>
-    <div class="hr-admin-nav-right">
-        <span><i class="bi bi-chat-fill"></i><b>5</b></span>
-        <span><i class="bi bi-bell-fill"></i></span>
-        <span><i class="bi bi-clock-history"></i><b>12</b></span>
-        <span class="hr-admin-avatar">MA</span>
-        <span>Mitchell Admin</span>
-    </div>
 </nav>
 
 @once

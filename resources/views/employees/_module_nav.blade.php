@@ -6,16 +6,8 @@
         <a href="{{ route('employees.index') }}" class="odoo-module-title">Employees</a>
         <a href="{{ route('employees.index') }}" @class(['active' => request()->routeIs('employees.*')])>Employees</a>
         <a href="{{ route('organization.index') }}">Departments</a>
-        <a href="{{ route('loans.create') }}" @class(['active' => request()->routeIs('loans.*')])>Loans &amp; Advances</a>
         <a href="#">Reporting</a>
         <a href="#">Configuration</a>
-    </div>
-    <div class="odoo-top-right">
-        <span class="odoo-icon-badge"><i class="bi bi-chat-fill"></i><b>5</b></span>
-        <span><i class="bi bi-bell-fill"></i></span>
-        <span class="odoo-icon-badge"><i class="bi bi-clock-history"></i><b>12</b></span>
-        <span class="odoo-user-pic">MA</span>
-        <span>Mitchell Admin</span>
     </div>
 </nav>
 

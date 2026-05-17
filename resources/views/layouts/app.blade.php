@@ -62,6 +62,59 @@
             background: #fff;
             border-bottom: 1px solid #e7ebf0;
         }
+        .app-user-tools {
+            align-items: center;
+            color: #334155;
+            display: inline-flex;
+            gap: 12px;
+        }
+        .app-user-tools i { color: #64748b; }
+        .app-icon-badge {
+            position: relative;
+        }
+        .app-icon-badge b {
+            background: #00a09d;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            left: 10px;
+            line-height: 1;
+            padding: 2px 5px;
+            position: absolute;
+            top: -10px;
+        }
+        .app-user-chip {
+            align-items: center;
+            color: #0f172a;
+            display: inline-flex;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .app-avatar {
+            align-items: center;
+            background: #e2e8f0;
+            border-radius: 50%;
+            display: inline-flex;
+            font-size: 11px;
+            height: 28px;
+            justify-content: center;
+            width: 28px;
+        }
+        .sidebar-user-tools {
+            align-items: center;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 12px;
+            padding: 0 .25rem;
+        }
+        .sidebar-user-tools .app-user-chip {
+            color: #fff;
+            font-size: 13px;
+        }
+        .sidebar-user-tools .app-icon-badge i {
+            color: rgba(255,255,255,.95);
+        }
 
         .metric {
             border: 0;
@@ -96,6 +149,12 @@
                 <div class="small text-white-50">Laravel migration</div>
             </div>
         </div>
+        <div class="sidebar-user-tools">
+            <span class="app-user-chip">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face" alt="Mitchell Admin" width="28" height="28" class="rounded-circle">
+                Mitchell Admin
+            </span>
+        </div>
 
         <nav class="d-grid gap-1">
             <a href="{{ route('dashboard') }}" @class(['active' => request()->routeIs('dashboard')])>
@@ -122,6 +181,14 @@
                 <i class="bi bi-briefcase"></i>
                 Leave
             </a>
+            <a href="#">
+                <i class="bi bi-chat-dots"></i>
+                Communication
+            </a>
+            <a href="{{ route('loans.create') }}" @class(['active' => request()->routeIs('loans.*')])>
+                <i class="bi bi-cash-coin"></i>
+                Loans
+            </a>
             <a href="#" class="disabled opacity-50">
                 <i class="bi bi-cash-stack"></i>
                 Payroll
@@ -135,10 +202,7 @@
                 <h1 class="h4 mb-0">{{ $heading ?? 'Dashboard' }}</h1>
                 <div class="text-secondary small">{{ $subheading ?? 'Core HR migration foundation' }}</div>
             </div>
-            <div class="d-flex align-items-center gap-2">
-                <span class="badge text-bg-light border">MySQL</span>
-                <span class="badge text-bg-danger">Bootstrap</span>
-            </div>
+            <div></div>
         </header>
 
         <section class="p-4">

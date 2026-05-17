@@ -8,14 +8,6 @@
             <a href="{{ route('attendance.reporting') }}">Reporting</a>
             <a href="#"><i class="bi bi-plus-lg"></i></a>
         </div>
-        <div class="v15-right">
-            <span><i class="bi bi-chat-left-text"></i><b>1</b></span>
-            <span><i class="bi bi-bell-fill"></i></span>
-            <span><i class="bi bi-calendar-event"></i><b>18</b></span>
-            <a href="#">My Company (San Francisco)</a>
-            <span class="v15-avatar">MA</span>
-            <span>Mitchell Admin</span>
-        </div>
 </nav>
 
 @once
