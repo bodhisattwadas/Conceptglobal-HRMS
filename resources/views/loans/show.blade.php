@@ -1,7 +1,7 @@
 @extends('layouts.app', ['heading' => 'Employees', 'subheading' => 'Loan Request'])
 
 @section('content')
-    @include('employees._module_nav')
+    @include('loans._nav')
     <div class="loan-title">Request for Loan / {{ $loan->loan_number }}</div>
     <div class="loan-actions">
         <div>
@@ -29,11 +29,7 @@
                 <form method="post" action="{{ route('loans.refuse', $loan) }}">@csrf <input name="refusal_reason" value="Refused" hidden><button class="odoo-secondary">Refuse</button></form>
             @endif
         </div>
-        <div class="loan-statebar">
-            <span class="{{ $loan->status === 'draft' ? 'active' : '' }}">Draft</span>
-            <span class="{{ $loan->status === 'submitted' ? 'active' : '' }}">Submitted</span>
-            <span class="{{ $loan->status === 'approved' ? 'active' : '' }}">Approved</span>
-        </div>
+        <div class="loan-status-badge {{ $loan->status }}">{{ ucfirst($loan->status) }}</div>
     </div>
 
     <div class="loan-pattern">
@@ -74,9 +70,35 @@
                 </tbody>
             </table>
             <div class="loan-totals">
-                <div>Total Amount: <b>$ {{ number_format((float)$loan->total_amount, 2) }}</b></div>
-                <div>Total Paid Amount: <b>$ {{ number_format((float)$loan->total_paid_amount, 2) }}</b></div>
-                <div>Balance Amount: <b>$ {{ number_format((float)$loan->balance_amount, 2) }}</b></div>
+                <div>Total Amount: <b>₹ {{ number_format((float)$loan->total_amount, 2) }}</b></div>
+                <div>Total Paid Amount: <b>₹ {{ number_format((float)$loan->total_paid_amount, 2) }}</b></div>
+                <div>Balance Amount: <b>₹ {{ number_format((float)$loan->balance_amount, 2) }}</b></div>
+            </div>
+            @if($loan->notes)
+                <div class="loan-audit">
+                    <h4>Notes</h4>
+                    <p>{{ $loan->notes }}</p>
+                </div>
+            @endif
+            <div class="loan-audit">
+                <h4>Audit Trail</h4>
+                <ul>
+                    @if($loan->submitted_at)
+                        <li>Submitted by {{ $loan->submitted_by }} on {{ $loan->submitted_at->format('d/m/Y H:i') }} (IP: {{ $loan->submitted_ip }})</li>
+                    @endif
+                    @if($loan->approved_at)
+                        <li>Approved by {{ $loan->approved_by }} on {{ $loan->approved_at->format('d/m/Y H:i') }} (IP: {{ $loan->approved_ip }})</li>
+                    @endif
+                    @if($loan->refused_at)
+                        <li>Refused by {{ $loan->refused_by }} on {{ $loan->refused_at->format('d/m/Y H:i') }} (IP: {{ $loan->refused_ip }})</li>
+                    @endif
+                    @if($loan->cancelled_at)
+                        <li>Cancelled by {{ $loan->cancelled_by }} on {{ $loan->cancelled_at->format('d/m/Y H:i') }} (IP: {{ $loan->cancelled_ip }})</li>
+                    @endif
+                    @if(!$loan->submitted_at && !$loan->approved_at && !$loan->refused_at && !$loan->cancelled_at)
+                        <li>No audit events yet.</li>
+                    @endif
+                </ul>
             </div>
         </section>
     </div>
@@ -87,8 +109,19 @@
         .loan-title { color: #6e4c94; font-size: 36px; padding: 14px 16px 8px; }
         .loan-actions { align-items: center; background: #fff; border-bottom: 1px solid #d8dde6; display: grid; grid-template-columns: 1fr auto 1fr; padding: 0 16px 10px; }
         .loan-toolbar { align-items: center; background: #fff; border-bottom: 1px solid #d8dde6; display: flex; justify-content: space-between; padding: 6px 16px; }
-        .loan-statebar span { color: #6b7280; padding: 8px 14px; }
-        .loan-statebar .active { background: #7e57a3; color: #fff; }
+        .loan-status-badge {
+            border-radius: 3px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 12px;
+            text-transform: uppercase;
+        }
+        .loan-status-badge.draft { background: #7e57a3; }
+        .loan-status-badge.submitted { background: #2563eb; }
+        .loan-status-badge.approved { background: #16a34a; }
+        .loan-status-badge.refused { background: #dc2626; }
+        .loan-status-badge.cancelled { background: #6b7280; }
         .loan-pattern { background-color: #f4f4f4; background-image: radial-gradient(#d3d3d3 .6px, transparent .6px); background-size: 3px 3px; min-height: calc(100vh - 220px); padding: 10px 0 20px; }
         .loan-sheet { background: #fff; border: 1px solid #c8ced8; margin: 0 auto; max-width: 1140px; min-height: 520px; padding: 26px 32px; }
         .loan-sheet h2 { font-size: 48px; font-weight: 700; margin-bottom: 28px; }
@@ -106,5 +139,8 @@
         .loan-totals div { font-size: 30px; margin-bottom: 8px; }
         .odoo-primary { background: #7e57a3; border: 1px solid #7e57a3; color: #fff; padding: 7px 11px; text-decoration: none; }
         .odoo-secondary { background: #fff; border: 1px solid #d8dde6; color: #111827; padding: 7px 11px; text-decoration: none; }
+        .loan-audit { margin-top: 16px; }
+        .loan-audit h4 { color: #344054; font-size: 16px; margin-bottom: 6px; }
+        .loan-audit ul { margin: 0; padding-left: 18px; }
     </style>
 @endpush

@@ -28,7 +28,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'total_paid_amount',
     'balance_amount',
     'reason',
+    'notes',
     'refusal_reason',
+    'submitted_at',
+    'submitted_by',
+    'submitted_ip',
+    'approved_at',
+    'approved_by',
+    'approved_ip',
+    'refused_at',
+    'refused_by',
+    'refused_ip',
+    'cancelled_at',
+    'cancelled_by',
+    'cancelled_ip',
 ])]
 class EmployeeLoan extends Model
 {
@@ -43,6 +56,10 @@ class EmployeeLoan extends Model
             'total_amount' => 'decimal:2',
             'total_paid_amount' => 'decimal:2',
             'balance_amount' => 'decimal:2',
+            'submitted_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'refused_at' => 'datetime',
+            'cancelled_at' => 'datetime',
         ];
     }
 

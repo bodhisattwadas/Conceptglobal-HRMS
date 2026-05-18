@@ -1,22 +1,14 @@
 @extends('layouts.app', ['heading' => 'Employees', 'subheading' => 'Loan Request'])
 
 @section('content')
-    @include('employees._module_nav')
+    @include('loans._nav')
     <div class="loan-title">Request for Loan / New</div>
-    <form method="post" action="{{ route('loans.store') }}">
+    <form method="post" action="{{ route('loans.store') }}" id="loan-create-form">
         @csrf
-        <div class="loan-actions">
-            <div><button class="odoo-primary">Save</button><a href="{{ route('employees.index') }}" class="odoo-secondary">Discard</a></div>
-            <div></div>
-            <div></div>
-        </div>
+        <div class="loan-actions"><div></div><div></div><div></div></div>
         <div class="loan-toolbar">
-            <div>
-                <button class="odoo-primary" type="submit" formaction="#" disabled>Compute Installment</button>
-                <button class="odoo-primary" type="submit" formaction="#" disabled>Submit</button>
-                <button class="odoo-secondary" type="submit" formaction="#" disabled>Cancel</button>
-            </div>
-            <div class="loan-statebar"><span class="active">Draft</span><span>Submitted</span><span>Approved</span></div>
+            <div></div>
+            <div class="loan-status-badge draft">Draft</div>
         </div>
         <div class="loan-pattern">
             <section class="loan-sheet">
@@ -29,7 +21,7 @@
                                 <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
                             @endforeach
                         </select>
-                        <label>Department</label><span class="muted">Auto from employee</span>
+                        <label>Department</label><span class="muted" id="employee-department">Auto from employee</span>
                         <label>Loan Amount</label><input name="loan_amount" type="number" step="0.01" value="6000.00" required>
                         <label>No Of Installments</label><input name="number_of_installments" type="number" min="1" value="3" required>
                         <label>Company</label>
@@ -40,21 +32,31 @@
                         </select>
                     </div>
                     <div class="loan-fields">
-                        <label>Date</label><input name="request_date" type="date" value="2022-06-03" required>
-                        <label>Job Position</label><span class="muted">Auto from employee</span>
-                        <label>Payment Start Date</label><input name="payment_start_date" type="date" value="2022-06-03" required>
-                        <label>Currency</label><input name="currency_code" value="{{ $defaultCurrencyCode }}" required>
+                        <label>Date</label><input name="request_date" type="date" value="{{ now()->toDateString() }}" required>
+                        <label>Job Position</label><span class="muted" id="employee-job-position">Auto from employee</span>
+                        <label>Payment Start Date</label><input name="payment_start_date" type="date" value="{{ now()->toDateString() }}" required>
+                        <label>Currency</label><input name="currency_code" value="INR" readonly>
                     </div>
                 </div>
                 <div class="loan-tab">Installments</div>
                 <table class="loan-table">
                     <thead><tr><th>Payment Date</th><th class="amount">Amount</th></tr></thead>
-                    <tbody><tr><td colspan="2" class="add-line">Add a line</td></tr></tbody>
+                    <tbody id="installments-body"><tr><td colspan="2" class="add-line">Click Compute Installment</td></tr></tbody>
                 </table>
                 <div class="loan-totals">
-                    <div>Total Amount: <b>$ 0.00</b></div>
-                    <div>Total Paid Amount: <b>$ 0.00</b></div>
-                    <div>Balance Amount: <b>$ 0.00</b></div>
+                    <div>Total Amount: <b id="total-amount">₹ 0.00</b></div>
+                    <div>Total Paid Amount: <b id="total-paid-amount">₹ 0.00</b></div>
+                    <div>Balance Amount: <b id="balance-amount">₹ 0.00</b></div>
+                </div>
+                <div class="loan-notes-wrap">
+                    <label class="loan-notes-label">Notes (Optional)</label>
+                    <textarea name="notes" class="loan-notes" rows="4" placeholder="Add notes..."></textarea>
+                </div>
+                <div class="loan-action-row loan-action-row-bottom">
+                    <button class="odoo-primary" type="button" id="compute-installments-btn">Compute Installment</button>
+                    <button class="odoo-secondary" type="submit" name="action" value="draft" id="save-draft-btn">Save as Draft</button>
+                    <button class="odoo-primary" type="submit" name="action" value="submit" id="submit-btn">Submit</button>
+                    <a href="{{ route('loans.index') }}" class="odoo-secondary">Cancel</a>
                 </div>
             </section>
         </div>
@@ -65,9 +67,18 @@
     <style>
         .loan-title { color: #6e4c94; font-size: 36px; padding: 14px 16px 8px; }
         .loan-actions { background: #fff; border-bottom: 1px solid #d8dde6; display: grid; grid-template-columns: 1fr auto 1fr; padding: 0 16px 10px; }
+        .loan-action-row { align-items: center; display: flex; flex-wrap: wrap; gap: 6px; }
+        .loan-action-row-bottom { margin-top: 10px; }
         .loan-toolbar { align-items: center; background: #fff; border-bottom: 1px solid #d8dde6; display: flex; justify-content: space-between; padding: 6px 16px; }
-        .loan-statebar span { color: #6b7280; padding: 8px 14px; }
-        .loan-statebar .active { background: #7e57a3; color: #fff; }
+        .loan-status-badge {
+            background: #7e57a3;
+            border-radius: 3px;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 12px;
+            text-transform: uppercase;
+        }
         .loan-pattern { background-color: #f4f4f4; background-image: radial-gradient(#d3d3d3 .6px, transparent .6px); background-size: 3px 3px; min-height: calc(100vh - 220px); padding: 10px 0 20px; }
         .loan-sheet { background: #fff; border: 1px solid #c8ced8; margin: 0 auto; max-width: 1140px; min-height: 520px; padding: 26px 32px; }
         .loan-sheet h2 { font-size: 40px; font-weight: 400; margin-bottom: 28px; }
@@ -84,7 +95,82 @@
         .loan-table .add-line { color: #6e36a2; }
         .loan-totals { margin-left: auto; margin-top: 26px; text-align: right; width: 280px; }
         .loan-totals div { font-size: 30px; margin-bottom: 8px; }
-        .odoo-primary { background: #7e57a3; border: 1px solid #7e57a3; color: #fff; padding: 7px 11px; text-decoration: none; }
-        .odoo-secondary { background: #fff; border: 1px solid #d8dde6; color: #111827; padding: 7px 11px; text-decoration: none; }
+        .odoo-primary, .odoo-secondary { font-size: 13px; line-height: 1; min-height: 30px; padding: 6px 10px; white-space: nowrap; }
+        .odoo-primary { background: #7e57a3; border: 1px solid #7e57a3; color: #fff; text-decoration: none; }
+        .odoo-secondary { background: #fff; border: 1px solid #d8dde6; color: #111827; text-decoration: none; }
+        .loan-notes-wrap { margin-top: 16px; }
+        .loan-notes-label { display: block; font-weight: 700; margin-bottom: 6px; }
+        .loan-notes { border: 1px solid #cfd4dc; padding: 8px; width: 100%; }
     </style>
+@endpush
+
+@push('scripts')
+<script>
+    const employeeMeta = @json($employeeMeta);
+    const employeeSelect = document.querySelector('select[name="employee_id"]');
+    const companySelect = document.querySelector('select[name="company_id"]');
+    const deptEl = document.getElementById('employee-department');
+    const jobEl = document.getElementById('employee-job-position');
+    const computeBtn = document.getElementById('compute-installments-btn');
+    const loanAmountEl = document.querySelector('input[name="loan_amount"]');
+    const installmentCountEl = document.querySelector('input[name="number_of_installments"]');
+    const paymentStartEl = document.querySelector('input[name="payment_start_date"]');
+    const installmentsBody = document.getElementById('installments-body');
+    const saveDraftBtn = document.getElementById('save-draft-btn');
+    const totalAmountEl = document.getElementById('total-amount');
+    const totalPaidAmountEl = document.getElementById('total-paid-amount');
+    const balanceAmountEl = document.getElementById('balance-amount');
+
+    function formatINR(amount) {
+        return `₹ ${Number(amount).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    }
+
+    function setEmployeeDetails() {
+        const selectedId = employeeSelect.value;
+        const meta = employeeMeta[selectedId] || {};
+        deptEl.textContent = meta.department || 'Auto from employee';
+        jobEl.textContent = meta.job_position || 'Auto from employee';
+        if (meta.company_id) companySelect.value = String(meta.company_id);
+    }
+
+    function computeInstallments() {
+        const amount = Number(loanAmountEl.value || 0);
+        const count = Number(installmentCountEl.value || 0);
+        const startDate = paymentStartEl.value;
+        if (!amount || !count || !startDate) return;
+
+        installmentsBody.innerHTML = '';
+        let remaining = amount;
+        const base = Math.round((amount / count) * 100) / 100;
+        const start = new Date(startDate);
+
+        for (let i = 0; i < count; i++) {
+            const rowDate = new Date(start);
+            rowDate.setMonth(rowDate.getMonth() + i);
+            const installmentAmount = i === count - 1 ? Math.round(remaining * 100) / 100 : base;
+            remaining = Math.round((remaining - installmentAmount) * 100) / 100;
+            const d = String(rowDate.getDate()).padStart(2, '0');
+            const m = String(rowDate.getMonth() + 1).padStart(2, '0');
+            const y = rowDate.getFullYear();
+
+            installmentsBody.insertAdjacentHTML('beforeend', `<tr><td>${d}/${m}/${y}</td><td class="amount">${formatINR(installmentAmount)}</td></tr>`);
+        }
+
+        totalAmountEl.textContent = formatINR(amount);
+        totalPaidAmountEl.textContent = formatINR(0);
+        balanceAmountEl.textContent = formatINR(amount);
+        saveDraftBtn?.focus();
+    }
+
+    employeeSelect.addEventListener('change', setEmployeeDetails);
+    computeBtn.addEventListener('click', computeInstallments);
+    loanAmountEl.addEventListener('input', () => {
+        const amount = Number(loanAmountEl.value || 0);
+        totalAmountEl.textContent = formatINR(amount);
+        totalPaidAmountEl.textContent = formatINR(0);
+        balanceAmountEl.textContent = formatINR(amount);
+    });
+    setEmployeeDetails();
+    loanAmountEl.dispatchEvent(new Event('input'));
+</script>
 @endpush

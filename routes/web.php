@@ -31,6 +31,7 @@ Route::patch('/employees/{employee}/restore', [EmployeeController::class, 'resto
 Route::get('/employees/{employee}/documents/create', [EmployeeController::class, 'createDocument'])->name('employees.documents.create');
 Route::post('/employees/{employee}/documents', [EmployeeController::class, 'storeDocument'])->name('employees.documents.store');
 Route::get('/employees/{employee}/timesheets', [EmployeeController::class, 'timesheets'])->name('employees.timesheets.index');
+Route::get('/loans', [LoanController::class, 'index'])->name('loans.index');
 Route::get('/loans/create', [LoanController::class, 'create'])->name('loans.create');
 Route::post('/loans', [LoanController::class, 'store'])->name('loans.store');
 Route::get('/loans/{loan}', [LoanController::class, 'show'])->name('loans.show');
