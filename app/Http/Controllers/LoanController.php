@@ -28,6 +28,18 @@ class LoanController extends Controller
         ]);
     }
 
+    public function bulkDelete(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'loan_ids' => ['required', 'array', 'min:1'],
+            'loan_ids.*' => ['integer', 'exists:employee_loans,id'],
+        ]);
+
+        EmployeeLoan::whereIn('id', $data['loan_ids'])->delete();
+
+        return back()->with('status', 'Selected loans deleted.');
+    }
+
     public function create(): View
     {
         $employees = Employee::with('workInformation.department', 'workInformation.jobPosition', 'workInformation.company')->orderBy('first_name')->get();
@@ -43,6 +55,27 @@ class LoanController extends Controller
                     'company_id' => $employee->workInformation?->company_id,
                 ],
             ]),
+            'loan' => null,
+        ]);
+    }
+
+    public function edit(EmployeeLoan $loan): View
+    {
+        $employees = Employee::with('workInformation.department', 'workInformation.jobPosition', 'workInformation.company')->orderBy('first_name')->get();
+        $loan->load('installments');
+
+        return view('loans.create', [
+            'employees' => $employees,
+            'companies' => Company::orderBy('name')->get(),
+            'defaultCurrencyCode' => 'INR',
+            'employeeMeta' => $employees->mapWithKeys(fn (Employee $employee) => [
+                $employee->id => [
+                    'department' => $employee->workInformation?->department?->name,
+                    'job_position' => $employee->workInformation?->jobPosition?->name,
+                    'company_id' => $employee->workInformation?->company_id,
+                ],
+            ]),
+            'loan' => $loan,
         ]);
     }
 
@@ -74,7 +107,24 @@ class LoanController extends Controller
         ]);
 
         $loan->update(['loan_number' => $this->nextLoanNumber($loan->id)]);
-        if ($action === 'submit') {
+        $installments = $data['installments'] ?? [];
+        if (!empty($installments)) {
+            $loan->installments()->delete();
+            foreach ($installments as $index => $inst) {
+                $amount = (float) ($inst['amount'] ?? 0);
+                if ($amount <= 0 || empty($inst['payment_date'])) {
+                    continue;
+                }
+                $loan->installments()->create([
+                    'installment_no' => $index + 1,
+                    'payment_date' => $inst['payment_date'],
+                    'amount' => $amount,
+                    'paid_amount' => 0,
+                    'remaining_amount' => $amount,
+                    'status' => 'pending',
+                ]);
+            }
+        } elseif ($action === 'submit') {
             $this->buildInstallments($loan);
         }
 
@@ -88,6 +138,53 @@ class LoanController extends Controller
         return view('loans.show', [
             'loan' => $loan,
         ]);
+    }
+
+    public function update(Request $request, EmployeeLoan $loan): RedirectResponse
+    {
+        $data = $this->validateLoan($request);
+        $employee = Employee::with('workInformation')->findOrFail($data['employee_id']);
+        $action = $request->string('action', 'draft')->toString();
+
+        $loan->update([
+            'employee_id' => $employee->id,
+            'department_id' => $employee->workInformation?->department_id,
+            'job_position_id' => $employee->workInformation?->job_position_id,
+            'company_id' => $data['company_id'] ?? $employee->workInformation?->company_id,
+            'request_date' => $data['request_date'],
+            'loan_amount' => $data['loan_amount'],
+            'number_of_installments' => $data['number_of_installments'],
+            'payment_start_date' => $data['payment_start_date'],
+            'currency_code' => 'INR',
+            'status' => $action === 'submit' ? 'submitted' : 'draft',
+            'total_amount' => $data['loan_amount'],
+            'balance_amount' => $data['loan_amount'],
+            'notes' => $data['notes'] ?? null,
+            'submitted_at' => $action === 'submit' ? now() : $loan->submitted_at,
+            'submitted_by' => $action === 'submit' ? 'Mitchell Admin' : $loan->submitted_by,
+            'submitted_ip' => $action === 'submit' ? $request->ip() : $loan->submitted_ip,
+        ]);
+
+        $installments = $data['installments'] ?? [];
+        $loan->installments()->delete();
+        if (!empty($installments)) {
+            foreach ($installments as $index => $inst) {
+                $amount = (float) ($inst['amount'] ?? 0);
+                if ($amount <= 0 || empty($inst['payment_date'])) continue;
+                $loan->installments()->create([
+                    'installment_no' => $index + 1,
+                    'payment_date' => $inst['payment_date'],
+                    'amount' => $amount,
+                    'paid_amount' => 0,
+                    'remaining_amount' => $amount,
+                    'status' => 'pending',
+                ]);
+            }
+        } elseif ($action === 'submit') {
+            $this->buildInstallments($loan);
+        }
+
+        return redirect()->route('loans.show', $loan)->with('status', $action === 'submit' ? 'Loan submitted.' : 'Loan draft updated.');
     }
 
     public function computeInstallments(EmployeeLoan $loan): RedirectResponse
@@ -167,6 +264,9 @@ class LoanController extends Controller
             'company_id' => ['nullable', 'exists:companies,id'],
             'currency_code' => ['nullable', 'string', 'max:10'],
             'notes' => ['nullable', 'string'],
+            'installments' => ['nullable', 'array'],
+            'installments.*.payment_date' => ['nullable', 'date'],
+            'installments.*.amount' => ['nullable', 'numeric', 'min:0'],
         ]);
     }
 

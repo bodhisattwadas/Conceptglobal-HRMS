@@ -5,7 +5,7 @@
     <div class="loan-title">Request for Loan / {{ $loan->loan_number }}</div>
     <div class="loan-actions">
         <div>
-            <a href="{{ route('loans.create') }}" class="odoo-secondary">Edit</a>
+            <a href="{{ route('loans.edit', $loan) }}" class="odoo-secondary">Edit</a>
             <a href="{{ route('loans.create') }}" class="odoo-secondary">Create</a>
         </div>
         <button class="odoo-secondary"><i class="bi bi-gear-fill"></i> Action</button>

@@ -4,7 +4,10 @@
     @include('loans._nav')
     <div class="loan-title">All Loans</div>
     <div class="loan-actions">
-        <div><a href="{{ route('loans.create') }}" class="odoo-primary">Create</a></div>
+        <div class="d-flex gap-2">
+            <a href="{{ route('loans.create') }}" class="odoo-primary">Create</a>
+            <button type="submit" form="loan-bulk-delete-form" class="odoo-danger">Delete Selected</button>
+        </div>
         <div class="loan-statebar">
             <a href="{{ route('loans.index') }}" class="{{ $status === '' ? 'active' : '' }}">All</a>
             <a href="{{ route('loans.index', ['status' => 'draft']) }}" class="{{ $status === 'draft' ? 'active' : '' }}">Draft</a>
@@ -14,12 +17,15 @@
             <a href="{{ route('loans.index', ['status' => 'cancelled']) }}" class="{{ $status === 'cancelled' ? 'active' : '' }}">Cancelled</a>
         </div>
     </div>
+    <form id="loan-bulk-delete-form" method="post" action="{{ route('loans.bulk-delete') }}">
+        @csrf
+    </form>
     <table class="loan-table">
         <thead><tr><th>Loan #</th><th>Employee</th><th>Department</th><th>Amount</th><th>Currency</th><th>Status</th><th>Date</th></tr></thead>
         <tbody>
         @forelse($loans as $loan)
             <tr>
-                <td><a href="{{ route('loans.show', $loan) }}">{{ $loan->loan_number }}</a></td>
+                <td><input type="checkbox" form="loan-bulk-delete-form" name="loan_ids[]" value="{{ $loan->id }}" class="loan-check"> <a href="{{ route('loans.show', $loan) }}">{{ $loan->loan_number }}</a></td>
                 <td>{{ $loan->employee?->full_name }}</td>
                 <td>{{ $loan->department?->name }}</td>
                 <td class="amount">Rs. {{ number_format((float)$loan->loan_amount, 2) }}</td>
@@ -48,6 +54,7 @@
     .loan-table th { background: #e9ecef; text-align: left; }
     .loan-table .amount { text-align: right; }
     .odoo-primary { background: #7e57a3; border: 1px solid #7e57a3; color: #fff; padding: 7px 11px; text-decoration: none; }
+    .odoo-danger { background: #dc2626; border: 1px solid #dc2626; color: #fff; padding: 7px 11px; }
     .loan-status-badge {
         border-radius: 3px;
         color: #fff;

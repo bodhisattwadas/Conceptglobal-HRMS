@@ -17,6 +17,13 @@ use App\Models\LeavePendingWork;
 use App\Models\LeaveRequest;
 use App\Models\LeaveSetting;
 use App\Models\LeaveType;
+use App\Models\PayrollContract;
+use App\Models\PayrollContributionRegister;
+use App\Models\PayrollPayslip;
+use App\Models\PayrollPayslipBatch;
+use App\Models\PayrollSalaryRule;
+use App\Models\PayrollSalaryStructure;
+use App\Models\PayrollSetting;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -242,6 +249,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->seedLoanModuleDemoData($company);
+        $this->seedPayrollModuleDemoData($company);
     }
 
     private function seedEmployeeCloneRoster(Company $company, User $user): void
@@ -379,7 +387,7 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
-        $loan = EmployeeLoan::query()->firstOrCreate(
+        $loan = EmployeeLoan::withTrashed()->updateOrCreate(
             ['loan_number' => 'LO/0001'],
             [
                 'employee_id' => $jeffrey->id,
@@ -397,6 +405,9 @@ class DatabaseSeeder extends Seeder
                 'balance_amount' => 6000.00,
             ]
         );
+        if ($loan->trashed()) {
+            $loan->restore();
+        }
 
         $rows = [
             ['2022-03-31', 2000.00],
@@ -410,7 +421,7 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        EmployeeLoan::query()->firstOrCreate(
+        $loan2 = EmployeeLoan::withTrashed()->updateOrCreate(
             ['loan_number' => 'LO/0002'],
             [
                 'employee_id' => $jeffrey->id,
@@ -421,12 +432,108 @@ class DatabaseSeeder extends Seeder
                 'loan_amount' => 3000.00,
                 'number_of_installments' => 3,
                 'payment_start_date' => '2022-06-30',
-                'currency_code' => 'USD',
+                'currency_code' => 'INR',
                 'status' => 'draft',
                 'total_amount' => 3000.00,
                 'total_paid_amount' => 0,
                 'balance_amount' => 3000.00,
             ]
         );
+        if ($loan2->trashed()) {
+            $loan2->restore();
+        }
+    }
+
+    private function seedPayrollModuleDemoData(Company $company): void
+    {
+        PayrollSalaryStructure::firstOrCreate(['reference' => 'BASE'], ['name' => 'Base for new structures', 'salary_rules_count' => 3]);
+        PayrollSalaryStructure::firstOrCreate(['reference' => 'ME'], ['name' => 'Marketing Executive', 'salary_rules_count' => 4]);
+        PayrollSalaryStructure::firstOrCreate(['reference' => 'MEGG'], ['name' => 'Marketing Executive for Gilles Grave', 'salary_rules_count' => 2]);
+
+        foreach ([
+            ['name' => 'Provident Fund', 'code' => 'PF'],
+            ['name' => 'ESI', 'code' => 'ESI'],
+            ['name' => 'Professional Tax', 'code' => 'PT'],
+            ['name' => 'TDS', 'code' => 'TDS'],
+            ['name' => 'Gratuity', 'code' => 'GRAT'],
+        ] as $reg) {
+            PayrollContributionRegister::firstOrCreate(['code' => $reg['code']], ['name' => $reg['name'], 'active' => true]);
+        }
+
+        PayrollSetting::firstOrCreate([], [
+            'default_currency_code' => 'INR',
+            'payroll_approval_required' => true,
+            'include_attendance_in_payroll' => true,
+            'include_leave_in_payroll' => true,
+            'include_timesheet_in_payroll' => false,
+            'default_working_days_per_month' => 26,
+            'default_working_hours_per_day' => 8,
+        ]);
+
+        $rules = [
+            ['Basic Salary', 'BASIC', 10, 'Always True', 'Fixed', 'result = contract.wage', null],
+            ['House Rent Allowance', 'HRA', 20, 'Always True', 'Percentage', 'result = basic * 0.40', null],
+            ['Medical Allowance', 'MED', 30, 'Always True', 'Fixed', 'result = 1250', null],
+            ['Special Allowance', 'SPL', 40, 'Always True', 'Fixed', 'result = 3000', null],
+            ['Provident Fund Deduction', 'PF_DED', 80, 'Always True', 'Percentage', 'result = basic * 0.12', 'Provident Fund'],
+            ['Professional Tax', 'PT_DED', 85, 'Always True', 'Fixed', 'result = 200', 'Professional Tax'],
+            ['TDS Deduction', 'TDS_DED', 90, 'Always True', 'Formula', 'result = gross * 0.05', 'TDS'],
+            ['Net Salary', 'NET', 999, 'Always True', 'Formula', 'result = gross - deductions', null],
+        ];
+        foreach ($rules as [$name, $code, $seq, $cond, $type, $py, $reg]) {
+            PayrollSalaryRule::updateOrCreate(
+                ['code' => $code],
+                [
+                    'name' => $name,
+                    'sequence' => $seq,
+                    'active' => true,
+                    'appears_on_payslip' => true,
+                    'condition_based_on' => $cond,
+                    'amount_type' => $type,
+                    'python_code' => $py,
+                    'contribution_register' => $reg,
+                ]
+            );
+        }
+
+        $abigail = Employee::where('first_name', 'Abigail')->where('last_name', 'Peterson')->first();
+        if (! $abigail) return;
+
+        $contract = PayrollContract::firstOrCreate(
+            ['contract_name' => 'abi contract', 'employee_id' => $abigail->id],
+            [
+                'department_id' => $abigail->workInformation?->department_id,
+                'job_position_id' => $abigail->workInformation?->job_position_id,
+                'start_date' => '2022-02-09',
+                'end_date' => null,
+                'notice_period_days' => 0,
+                'employee_category' => 'Employee',
+                'salary_structure' => 'Base for new structures',
+                'salary_structure_type' => 'Employee',
+                'working_schedule' => 'Standard 40 Hours/week/Monthly',
+                'hr_responsible' => 'Mitchell Admin',
+                'state' => 'running',
+                'notes' => '',
+            ]
+        );
+
+        $batch = PayrollPayslipBatch::firstOrCreate(
+            ['name' => 'batch feb payroll'],
+            ['date_from' => '2022-02-01', 'date_to' => '2022-02-28', 'credit_note' => false, 'state' => 'draft']
+        );
+
+        $rows = [
+            ['SLIP0008', 'Salary Slip of Abigail Peterson for February-2022', '2022-02-01', '2022-02-28', 'draft', 'Abigail', 'Peterson'],
+            ['SLIP0009', 'Salary Slip of Anita Oliver for February-2022', '2022-02-01', '2022-02-28', 'draft', 'Anita', 'Oliver'],
+            ['SLIP0006', 'Salary Slip of Audrey Peterson for January-2022', '2022-01-01', '2022-01-31', 'draft', 'Audrey', 'Peterson'],
+        ];
+        foreach ($rows as [$ref, $name, $from, $to, $status, $fn, $ln]) {
+            $emp = Employee::where('first_name', $fn)->where('last_name', $ln)->first();
+            if (! $emp) continue;
+            PayrollPayslip::firstOrCreate(
+                ['reference' => $ref],
+                ['payroll_payslip_batch_id' => $batch->id, 'employee_id' => $emp->id, 'name' => $name, 'date_from' => $from, 'date_to' => $to, 'status' => $status]
+            );
+        }
     }
 }

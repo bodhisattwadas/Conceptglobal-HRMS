@@ -185,11 +185,11 @@
                 <i class="bi bi-chat-dots"></i>
                 Communication
             </a>
-            <a href="{{ route('loans.create') }}" @class(['active' => request()->routeIs('loans.*')])>
+            <a href="{{ route('loans.index') }}" @class(['active' => request()->routeIs('loans.*')])>
                 <i class="bi bi-cash-coin"></i>
                 Loans
             </a>
-            <a href="#" class="disabled opacity-50">
+            <a href="{{ route('payroll.structures.index') }}" @class(['active' => request()->routeIs('payroll.*')])>
                 <i class="bi bi-cash-stack"></i>
                 Payroll
             </a>

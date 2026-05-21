@@ -2,9 +2,10 @@
 
 @section('content')
     @include('loans._nav')
-    <div class="loan-title">Request for Loan / New</div>
-    <form method="post" action="{{ route('loans.store') }}" id="loan-create-form">
+    <div class="loan-title">Request for Loan / {{ $loan?->loan_number ?? 'New' }}</div>
+    <form method="post" action="{{ $loan ? route('loans.update', $loan) : route('loans.store') }}" id="loan-create-form">
         @csrf
+        @if($loan) @method('put') @endif
         <div class="loan-actions"><div></div><div></div><div></div></div>
         <div class="loan-toolbar">
             <div></div>
@@ -12,36 +13,47 @@
         </div>
         <div class="loan-pattern">
             <section class="loan-sheet">
-                <h2>/</h2>
+                <h2>{{ $loan?->loan_number ?? '/' }}</h2>
                 <div class="loan-grid">
                     <div class="loan-fields">
                         <label>Employee</label>
                         <select name="employee_id" required>
                             @foreach($employees as $employee)
-                                <option value="{{ $employee->id }}">{{ $employee->full_name }}</option>
+                                <option value="{{ $employee->id }}" @selected((int)old('employee_id', $loan?->employee_id) === $employee->id)>{{ $employee->full_name }}</option>
                             @endforeach
                         </select>
                         <label>Department</label><span class="muted" id="employee-department">Auto from employee</span>
-                        <label>Loan Amount</label><input name="loan_amount" type="number" step="0.01" value="6000.00" required>
-                        <label>No Of Installments</label><input name="number_of_installments" type="number" min="1" value="3" required>
+                        <label>Loan Amount</label><input name="loan_amount" type="number" step="0.01" value="{{ old('loan_amount', $loan?->loan_amount ?? '6000.00') }}" required>
+                        <label>No Of Installments</label><input name="number_of_installments" type="number" min="1" value="{{ old('number_of_installments', $loan?->number_of_installments ?? '3') }}" required>
                         <label>Company</label>
                         <select name="company_id">
                             @foreach($companies as $company)
-                                <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                <option value="{{ $company->id }}" @selected((int)old('company_id', $loan?->company_id) === $company->id)>{{ $company->name }}</option>
                             @endforeach
                         </select>
                     </div>
                     <div class="loan-fields">
-                        <label>Date</label><input name="request_date" type="date" value="{{ now()->toDateString() }}" required>
+                        <label>Date</label><input name="request_date" type="date" value="{{ old('request_date', optional($loan?->request_date)->toDateString() ?? now()->toDateString()) }}" required>
                         <label>Job Position</label><span class="muted" id="employee-job-position">Auto from employee</span>
-                        <label>Payment Start Date</label><input name="payment_start_date" type="date" value="{{ now()->toDateString() }}" required>
+                        <label>Payment Start Date</label><input name="payment_start_date" type="date" value="{{ old('payment_start_date', optional($loan?->payment_start_date)->toDateString() ?? now()->toDateString()) }}" required>
                         <label>Currency</label><input name="currency_code" value="INR" readonly>
                     </div>
                 </div>
                 <div class="loan-tab">Installments</div>
                 <table class="loan-table">
                     <thead><tr><th>Payment Date</th><th class="amount">Amount</th></tr></thead>
-                    <tbody id="installments-body"><tr><td colspan="2" class="add-line">Click Compute Installment</td></tr></tbody>
+                    <tbody id="installments-body">
+                        @if($loan && $loan->installments->count())
+                            @foreach($loan->installments as $i => $inst)
+                                <tr>
+                                    <td><input type="date" class="installment-date" name="installments[{{ $i }}][payment_date]" value="{{ optional($inst->payment_date)->toDateString() }}"></td>
+                                    <td class="amount"><input type="number" step="0.01" min="0" class="installment-amount" name="installments[{{ $i }}][amount]" value="{{ number_format((float)$inst->amount, 2, '.', '') }}"></td>
+                                </tr>
+                            @endforeach
+                        @else
+                            <tr><td colspan="2" class="add-line">Click Compute Installment</td></tr>
+                        @endif
+                    </tbody>
                 </table>
                 <div class="loan-totals">
                     <div>Total Amount: <b id="total-amount">₹ 0.00</b></div>
@@ -50,7 +62,7 @@
                 </div>
                 <div class="loan-notes-wrap">
                     <label class="loan-notes-label">Notes (Optional)</label>
-                    <textarea name="notes" class="loan-notes" rows="4" placeholder="Add notes..."></textarea>
+                    <textarea name="notes" class="loan-notes" rows="4" placeholder="Add notes...">{{ old('notes', $loan?->notes) }}</textarea>
                 </div>
                 <div class="loan-action-row loan-action-row-bottom">
                     <button class="odoo-primary" type="button" id="compute-installments-btn">Compute Installment</button>
@@ -133,6 +145,69 @@
         if (meta.company_id) companySelect.value = String(meta.company_id);
     }
 
+    function distributeDownward(total, editableIndex, amounts) {
+        const fixedUpperTotal = amounts.slice(0, editableIndex + 1).reduce((a, b) => a + b, 0);
+        const lowerIndexes = amounts.map((_, i) => i).filter(i => i > editableIndex);
+        if (lowerIndexes.length === 0) return amounts;
+        let remaining = Math.round((total - fixedUpperTotal) * 100) / 100;
+        if (remaining < 0) remaining = 0;
+        const base = Math.floor((remaining / lowerIndexes.length) * 100) / 100;
+        let sum = 0;
+        lowerIndexes.forEach(i => {
+            amounts[i] = base;
+            sum += base;
+        });
+        const diff = Math.round((remaining - sum) * 100) / 100;
+        amounts[lowerIndexes[lowerIndexes.length - 1]] = Math.round((amounts[lowerIndexes[lowerIndexes.length - 1]] + diff) * 100) / 100;
+        return amounts;
+    }
+
+    function enforceDateOrder() {
+        const dateInputs = Array.from(document.querySelectorAll('.installment-date'));
+        for (let i = 1; i < dateInputs.length; i++) {
+            const prev = dateInputs[i - 1].value;
+            if (prev) {
+                dateInputs[i].min = prev;
+                if (dateInputs[i].value && dateInputs[i].value < prev) {
+                    dateInputs[i].value = prev;
+                }
+            }
+        }
+    }
+
+    function wireEditableRows(totalAmount) {
+        const amountInputs = Array.from(document.querySelectorAll('.installment-amount'));
+        const dateInputs = Array.from(document.querySelectorAll('.installment-date'));
+
+        dateInputs.forEach((input) => {
+            input.addEventListener('change', enforceDateOrder);
+        });
+        enforceDateOrder();
+
+        amountInputs.forEach((input, idx) => {
+            input.addEventListener('change', () => {
+                let amounts = amountInputs.map(el => Number(el.value || 0));
+                let current = Number(input.value || 0);
+                if (Number.isNaN(current) || current < 0) {
+                    current = 0;
+                }
+                const maxAllowed = totalAmount - amounts.slice(0, idx).reduce((a, b) => a + b, 0);
+                if (current > maxAllowed) {
+                    current = maxAllowed > 0 ? maxAllowed : 0;
+                }
+                amounts[idx] = Math.round(current * 100) / 100;
+                amounts = distributeDownward(totalAmount, idx, amounts);
+                amountInputs.forEach((el, i) => {
+                    el.value = amounts[i].toFixed(2);
+                });
+                const finalTotal = amounts.reduce((a, b) => a + b, 0);
+                totalAmountEl.textContent = formatINR(finalTotal);
+                totalPaidAmountEl.textContent = formatINR(0);
+                balanceAmountEl.textContent = formatINR(finalTotal);
+            });
+        });
+    }
+
     function computeInstallments() {
         const amount = Number(loanAmountEl.value || 0);
         const count = Number(installmentCountEl.value || 0);
@@ -153,12 +228,19 @@
             const m = String(rowDate.getMonth() + 1).padStart(2, '0');
             const y = rowDate.getFullYear();
 
-            installmentsBody.insertAdjacentHTML('beforeend', `<tr><td>${d}/${m}/${y}</td><td class="amount">${formatINR(installmentAmount)}</td></tr>`);
+            const iso = `${y}-${m}-${d}`;
+            installmentsBody.insertAdjacentHTML('beforeend', `
+                <tr>
+                    <td><input type="date" class="installment-date" name="installments[${i}][payment_date]" value="${iso}"></td>
+                    <td class="amount"><input type="number" step="0.01" min="0" class="installment-amount" name="installments[${i}][amount]" value="${installmentAmount.toFixed(2)}"></td>
+                </tr>
+            `);
         }
 
         totalAmountEl.textContent = formatINR(amount);
         totalPaidAmountEl.textContent = formatINR(0);
         balanceAmountEl.textContent = formatINR(amount);
+        wireEditableRows(amount);
         saveDraftBtn?.focus();
     }
 
@@ -172,5 +254,8 @@
     });
     setEmployeeDetails();
     loanAmountEl.dispatchEvent(new Event('input'));
+    if (document.querySelectorAll('.installment-amount').length) {
+        wireEditableRows(Number(loanAmountEl.value || 0));
+    }
 </script>
 @endpush
