@@ -9,6 +9,8 @@ use App\Http\Controllers\LoanController;
 use App\Http\Controllers\MasterSettingController;
 use App\Http\Controllers\OrganizationController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\ProjectTaskController;
+use App\Http\Controllers\TimesheetController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', DashboardController::class)->name('dashboard');
@@ -102,3 +104,24 @@ Route::prefix('payroll')->name('payroll.')->group(function (): void {
     Route::get('/settings', [PayrollController::class, 'settings'])->name('settings.edit');
     Route::post('/settings', [PayrollController::class, 'updateSettings'])->name('settings.update');
 });
+
+Route::prefix('timesheets')->name('timesheets.')->group(function (): void {
+    Route::get('/', [TimesheetController::class, 'index'])->name('index');
+    Route::get('/create', [TimesheetController::class, 'create'])->name('create');
+    Route::post('/', [TimesheetController::class, 'store'])->name('store');
+    Route::get('/export/csv', [TimesheetController::class, 'exportCsv'])->name('export.csv');
+    Route::get('/reports/employee-summary', [TimesheetController::class, 'employeeSummary'])->name('reports.employee');
+    Route::get('/reports/project-summary', [TimesheetController::class, 'projectSummary'])->name('reports.project');
+    Route::get('/reports/task-summary', [TimesheetController::class, 'taskSummary'])->name('reports.task');
+    Route::get('/settings', [TimesheetController::class, 'settings'])->name('settings.edit');
+    Route::post('/settings', [TimesheetController::class, 'updateSettings'])->name('settings.update');
+    Route::get('/{timesheet}', [TimesheetController::class, 'show'])->name('show');
+    Route::get('/{timesheet}/edit', [TimesheetController::class, 'edit'])->name('edit');
+    Route::put('/{timesheet}', [TimesheetController::class, 'update'])->name('update');
+    Route::delete('/{timesheet}', [TimesheetController::class, 'destroy'])->name('destroy');
+    Route::post('/{timesheet}/submit', [TimesheetController::class, 'submit'])->name('submit');
+    Route::post('/{timesheet}/approve', [TimesheetController::class, 'approve'])->name('approve');
+    Route::post('/{timesheet}/reject', [TimesheetController::class, 'reject'])->name('reject');
+});
+
+Route::get('/projects/tasks/{task}', [ProjectTaskController::class, 'show'])->name('projects.tasks.show');

@@ -193,6 +193,10 @@
                 <i class="bi bi-cash-stack"></i>
                 Payroll
             </a>
+            <a href="{{ route('timesheets.index') }}" @class(['active' => request()->routeIs('timesheets.*') || request()->routeIs('projects.tasks.*')])>
+                <i class="bi bi-clock-history"></i>
+                Timesheets
+            </a>
         </nav>
     </aside>
 

@@ -24,6 +24,10 @@ use App\Models\PayrollPayslipBatch;
 use App\Models\PayrollSalaryRule;
 use App\Models\PayrollSalaryStructure;
 use App\Models\PayrollSetting;
+use App\Models\Project;
+use App\Models\ProjectTask;
+use App\Models\Timesheet;
+use App\Models\TimesheetSetting;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -250,6 +254,7 @@ class DatabaseSeeder extends Seeder
 
         $this->seedLoanModuleDemoData($company);
         $this->seedPayrollModuleDemoData($company);
+        $this->seedTimesheetModuleDemoData($company);
     }
 
     private function seedEmployeeCloneRoster(Company $company, User $user): void
@@ -534,6 +539,124 @@ class DatabaseSeeder extends Seeder
                 ['reference' => $ref],
                 ['payroll_payslip_batch_id' => $batch->id, 'employee_id' => $emp->id, 'name' => $name, 'date_from' => $from, 'date_to' => $to, 'status' => $status]
             );
+        }
+    }
+
+    private function seedTimesheetModuleDemoData(Company $company): void
+    {
+        TimesheetSetting::firstOrCreate([], [
+            'company_id' => $company->id,
+            'allow_future_entries' => false,
+            'future_entry_limit_days' => 0,
+            'require_approval' => true,
+            'minimum_hours_per_entry' => 0.25,
+            'maximum_hours_per_day' => 12,
+            'restrict_to_assigned_tasks' => false,
+            'lock_after_payroll' => true,
+        ]);
+
+        $mitchell = Employee::where('first_name', 'Mitchell')->where('last_name', 'Admin')->first();
+        $projects = [
+            'Office Design' => Project::firstOrCreate(
+                ['name' => 'Office Design'],
+                ['company_id' => $company->id, 'code' => 'OFFICE', 'manager_employee_id' => $mitchell?->id, 'status' => 'active', 'start_date' => '2021-12-01']
+            ),
+            'Research & Development' => Project::firstOrCreate(
+                ['name' => 'Research & Development'],
+                ['company_id' => $company->id, 'code' => 'RND', 'manager_employee_id' => $mitchell?->id, 'status' => 'active', 'start_date' => '2021-12-01']
+            ),
+        ];
+
+        $taskRows = [
+            ['Office Design', 'Meeting Room Furnitures', 40, '2022-02-28', 'in_progress'],
+            ['Office Design', 'Room 2: Decoration', 24, '2022-02-20', 'in_progress'],
+            ['Office Design', 'Office planning', 16, '2022-02-15', 'new'],
+            ['Research & Development', 'Unit Testing', 30, '2022-02-28', 'in_progress'],
+            ['Research & Development', 'User interface improvements', 42, '2022-03-10', 'in_progress'],
+            ['Research & Development', 'Social network integration', 36, '2022-03-15', 'new'],
+            ['Research & Development', 'Document management', 28, '2022-03-20', 'new'],
+        ];
+
+        $tasks = [];
+        foreach ($taskRows as [$projectName, $title, $planned, $deadline, $status]) {
+            $tasks[$title] = ProjectTask::firstOrCreate(
+                ['project_id' => $projects[$projectName]->id, 'title' => $title],
+                [
+                    'company_id' => $company->id,
+                    'planned_hours' => $planned,
+                    'remaining_hours' => $planned,
+                    'deadline' => $deadline,
+                    'status' => $status,
+                    'priority' => 'normal',
+                ]
+            );
+        }
+
+        $employeeNames = ['Abigail Peterson', 'Anita Oliver', 'Audrey Peterson', 'Marc Demo', 'Walter Horton', 'Keith Byrd', 'Toni Jimenez', 'Tina Williamson'];
+        $employees = Employee::query()
+            ->whereIn('email', [
+                'abigail.peterson39@example.com',
+                'anita.oliver32@example.com',
+                'audrey.peterson25@example.com',
+                'mark.brown23@example.com',
+                'walter.horton80@example.com',
+                'keith.byrd52@example.com',
+                'toni.jimenez23@example.com',
+                'tina.williamson98@example.com',
+            ])
+            ->with('workInformation')
+            ->get()
+            ->keyBy('full_name');
+
+        foreach ($tasks as $task) {
+            foreach ($employees->take(3) as $employee) {
+                $task->assignees()->syncWithoutDetaching([$employee->id => ['assigned_at' => now()]]);
+            }
+        }
+
+        $entries = [
+            ['Abigail Peterson', 'Research & Development', 'Unit Testing', '2022-02-10', 'Requirements analysis', 3.00, true, 'approved'],
+            ['Abigail Peterson', 'Office Design', 'Room 2: Decoration', '2022-02-05', 'Requirements analysis', 2.00, true, 'approved'],
+            ['Marc Demo', 'Office Design', 'Meeting Room Furnitures', '2021-12-29', 'Requirements analysis', 1.00, true, 'submitted'],
+            ['Walter Horton', 'Office Design', 'Meeting Room Furnitures', '2021-12-30', 'Requirements analysis', 1.00, true, 'submitted'],
+            ['Keith Byrd', 'Office Design', 'Meeting Room Furnitures', '2022-01-01', 'On Site Visit', 2.00, false, 'draft'],
+            ['Toni Jimenez', 'Research & Development', 'Social network integration', '2022-02-12', 'API integration', 4.00, true, 'approved'],
+            ['Tina Williamson', 'Research & Development', 'Document management', '2022-02-14', 'Document review', 2.50, false, 'draft'],
+            ['Anita Oliver', 'Research & Development', 'User interface improvements', '2022-02-15', 'Frontend polish', 5.00, true, 'submitted'],
+        ];
+
+        foreach ($entries as [$employeeName, $projectName, $taskTitle, $date, $description, $hours, $billable, $status]) {
+            $employee = $employees[$employeeName] ?? null;
+            $task = $tasks[$taskTitle] ?? null;
+            if (! $employee || ! $task) {
+                continue;
+            }
+
+            Timesheet::firstOrCreate(
+                ['employee_id' => $employee->id, 'project_task_id' => $task->id, 'date' => $date, 'description' => $description],
+                [
+                    'company_id' => $company->id,
+                    'department_id' => $employee->workInformation?->department_id,
+                    'project_id' => $projects[$projectName]->id,
+                    'hours_spent' => $hours,
+                    'is_billable' => $billable,
+                    'status' => $status,
+                    'submitted_at' => in_array($status, ['submitted', 'approved'], true) ? now() : null,
+                    'approved_at' => $status === 'approved' ? now() : null,
+                    'source' => 'manual',
+                ]
+            );
+        }
+
+        foreach ($tasks as $task) {
+            $spent = (float) $task->timesheets()->whereIn('status', ['draft', 'submitted', 'approved'])->sum('hours_spent');
+            $planned = (float) $task->planned_hours;
+            $task->update([
+                'spent_hours' => $spent,
+                'remaining_hours' => max($planned - $spent, 0),
+                'extra_hours' => max($spent - $planned, 0),
+                'progress_percent' => $planned > 0 ? min(($spent / $planned) * 100, 100) : 0,
+            ]);
         }
     }
 }
