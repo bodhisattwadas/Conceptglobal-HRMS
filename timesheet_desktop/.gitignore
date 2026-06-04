@@ -1,7 +1,1 @@
-data/
-dist/
-build/
-*.spec.bak
-__pycache__/
-*.py[cod]
 
