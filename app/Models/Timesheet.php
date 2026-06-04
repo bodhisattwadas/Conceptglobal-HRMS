@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
 
 #[Fillable([
     'company_id',
@@ -31,6 +33,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     'rejected_by',
     'rejection_reason',
     'source',
+    'desktop_uuid',
 ])]
 class Timesheet extends Model
 {
@@ -73,5 +76,14 @@ class Timesheet extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(TimesheetStatusLog::class);
+    }
+
+    public function scopeDesktopSynced(Builder $query): Builder
+    {
+        if (! Schema::hasColumn('timesheets', 'desktop_uuid')) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where('source', 'desktop')->whereNotNull('desktop_uuid');
     }
 }

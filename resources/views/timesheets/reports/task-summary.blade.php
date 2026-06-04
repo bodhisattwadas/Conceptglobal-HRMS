@@ -18,7 +18,7 @@
                     <td>{{ $task->project?->name }}</td>
                     <td>{{ $task->assignees->pluck('full_name')->join(', ') }}</td>
                     <td class="text-end">{{ number_format((float) $task->planned_hours, 2) }}</td>
-                    <td class="text-end">{{ number_format((float) $task->spent_hours, 2) }}</td>
+                    <td class="text-end">{{ number_format((float) $task->timesheets_sum_hours_spent, 2) }}</td>
                     <td><div class="progress-thin"><span style="width: {{ (float) $task->progress_percent }}%"></span></div></td>
                     <td>{{ ucfirst(str_replace('_', ' ', $task->status)) }}</td>
                 </tr>

@@ -19,7 +19,8 @@ class TimesheetController extends Controller
 {
     public function index(Request $request): View
     {
-        $query = Timesheet::with('employee.workInformation.department', 'project', 'task')
+        $query = Timesheet::desktopSynced()
+            ->with('employee.workInformation.department', 'project', 'task')
             ->latest('date')
             ->latest('id');
 
@@ -80,6 +81,8 @@ class TimesheetController extends Controller
 
     public function show(Timesheet $timesheet): View
     {
+        abort_unless($timesheet->source === 'desktop' && filled($timesheet->desktop_uuid), 404);
+
         return view('timesheets.show', [
             'timesheet' => $timesheet->load('employee.workInformation.department', 'project', 'task', 'logs'),
         ]);
@@ -156,7 +159,8 @@ class TimesheetController extends Controller
     public function employeeSummary(): View
     {
         return view('timesheets.reports.employee-summary', [
-            'rows' => Timesheet::with('employee.workInformation.department')
+            'rows' => Timesheet::desktopSynced()
+                ->with('employee.workInformation.department')
                 ->select('employee_id')
                 ->selectRaw('COUNT(*) as entries')
                 ->selectRaw('SUM(hours_spent) as total_hours')
@@ -170,14 +174,20 @@ class TimesheetController extends Controller
     public function projectSummary(): View
     {
         return view('timesheets.reports.project-summary', [
-            'projects' => Project::with('tasks')->withSum('timesheets', 'hours_spent')->orderBy('name')->get(),
+            'projects' => Project::with('tasks')
+                ->withSum(['timesheets' => fn ($query) => $query->desktopSynced()], 'hours_spent')
+                ->orderBy('name')
+                ->get(),
         ]);
     }
 
     public function taskSummary(): View
     {
         return view('timesheets.reports.task-summary', [
-            'tasks' => ProjectTask::with('project', 'assignees')->orderBy('title')->get(),
+            'tasks' => ProjectTask::with('project', 'assignees')
+                ->withSum(['timesheets' => fn ($query) => $query->desktopSynced()], 'hours_spent')
+                ->orderBy('title')
+                ->get(),
         ]);
     }
 
@@ -210,7 +220,10 @@ class TimesheetController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
-        $rows = Timesheet::with('employee.workInformation.department', 'project', 'task')->orderBy('date')->get();
+        $rows = Timesheet::desktopSynced()
+            ->with('employee.workInformation.department', 'project', 'task')
+            ->orderBy('date')
+            ->get();
 
         return response()->streamDownload(function () use ($rows): void {
             $out = fopen('php://output', 'w');

@@ -26,7 +26,6 @@ use App\Models\PayrollSalaryStructure;
 use App\Models\PayrollSetting;
 use App\Models\Project;
 use App\Models\ProjectTask;
-use App\Models\Timesheet;
 use App\Models\TimesheetSetting;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -108,6 +107,7 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $employee->update(['user_id' => $user->id]);
 
         EmployeeWorkInformation::query()->updateOrCreate(
             ['employee_id' => $employee->id],
@@ -592,7 +592,6 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        $employeeNames = ['Abigail Peterson', 'Anita Oliver', 'Audrey Peterson', 'Marc Demo', 'Walter Horton', 'Keith Byrd', 'Toni Jimenez', 'Tina Williamson'];
         $employees = Employee::query()
             ->whereIn('email', [
                 'abigail.peterson39@example.com',
@@ -614,48 +613,12 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        $entries = [
-            ['Abigail Peterson', 'Research & Development', 'Unit Testing', '2022-02-10', 'Requirements analysis', 3.00, true, 'approved'],
-            ['Abigail Peterson', 'Office Design', 'Room 2: Decoration', '2022-02-05', 'Requirements analysis', 2.00, true, 'approved'],
-            ['Marc Demo', 'Office Design', 'Meeting Room Furnitures', '2021-12-29', 'Requirements analysis', 1.00, true, 'submitted'],
-            ['Walter Horton', 'Office Design', 'Meeting Room Furnitures', '2021-12-30', 'Requirements analysis', 1.00, true, 'submitted'],
-            ['Keith Byrd', 'Office Design', 'Meeting Room Furnitures', '2022-01-01', 'On Site Visit', 2.00, false, 'draft'],
-            ['Toni Jimenez', 'Research & Development', 'Social network integration', '2022-02-12', 'API integration', 4.00, true, 'approved'],
-            ['Tina Williamson', 'Research & Development', 'Document management', '2022-02-14', 'Document review', 2.50, false, 'draft'],
-            ['Anita Oliver', 'Research & Development', 'User interface improvements', '2022-02-15', 'Frontend polish', 5.00, true, 'submitted'],
-        ];
-
-        foreach ($entries as [$employeeName, $projectName, $taskTitle, $date, $description, $hours, $billable, $status]) {
-            $employee = $employees[$employeeName] ?? null;
-            $task = $tasks[$taskTitle] ?? null;
-            if (! $employee || ! $task) {
-                continue;
-            }
-
-            Timesheet::firstOrCreate(
-                ['employee_id' => $employee->id, 'project_task_id' => $task->id, 'date' => $date, 'description' => $description],
-                [
-                    'company_id' => $company->id,
-                    'department_id' => $employee->workInformation?->department_id,
-                    'project_id' => $projects[$projectName]->id,
-                    'hours_spent' => $hours,
-                    'is_billable' => $billable,
-                    'status' => $status,
-                    'submitted_at' => in_array($status, ['submitted', 'approved'], true) ? now() : null,
-                    'approved_at' => $status === 'approved' ? now() : null,
-                    'source' => 'manual',
-                ]
-            );
-        }
-
         foreach ($tasks as $task) {
-            $spent = (float) $task->timesheets()->whereIn('status', ['draft', 'submitted', 'approved'])->sum('hours_spent');
-            $planned = (float) $task->planned_hours;
             $task->update([
-                'spent_hours' => $spent,
-                'remaining_hours' => max($planned - $spent, 0),
-                'extra_hours' => max($spent - $planned, 0),
-                'progress_percent' => $planned > 0 ? min(($spent / $planned) * 100, 100) : 0,
+                'spent_hours' => 0,
+                'remaining_hours' => (float) $task->planned_hours,
+                'extra_hours' => 0,
+                'progress_percent' => 0,
             ]);
         }
     }

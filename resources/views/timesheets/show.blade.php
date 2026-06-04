@@ -45,17 +45,18 @@
 
         <h5 class="mt-4">Work Timer Log</h5>
         <table class="timesheet-table">
-            <thead><tr><th>Action</th><th>Time</th><th>Elapsed</th><th>Note</th></tr></thead>
+            <thead><tr><th>Action</th><th>Time</th><th>Elapsed</th><th>Total</th><th>Note</th></tr></thead>
             <tbody>
                 @forelse(($timesheet->timer_logs ?? []) as $log)
                     <tr>
                         <td>{{ $log['action'] ?? '' }}</td>
                         <td>{{ $log['time'] ?? '' }}</td>
                         <td>{{ $log['elapsed'] ?? '' }}</td>
+                        <td>{{ $log['total'] ?? '' }}</td>
                         <td>{{ $log['note'] ?? '' }}</td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="text-secondary">No timer activity recorded.</td></tr>
+                    <tr><td colspan="5" class="text-secondary">No timer activity recorded.</td></tr>
                 @endforelse
             </tbody>
         </table>

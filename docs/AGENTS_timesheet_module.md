@@ -17,6 +17,7 @@ Build a simple single-user desktop application that supports:
 - Project task wise timesheet entry
 - Employee selection for timesheet rows
 - Project wise and task wise hour summaries
+- Laravel API login screen
 - One All Timesheets screen
 - One Create New Timesheet screen
 - Manual start time, end time, hours spent, billable, and description fields
@@ -27,7 +28,7 @@ Build a simple single-user desktop application that supports:
 
 The first version should work fully offline on one machine using a local SQLite database.
 
-Do not build an admin interface, login screen, manager review flow, role management, payroll screens, or reporting dashboard in this simplified build.
+Do not build an admin interface, manager review flow, role management, payroll screens, or reporting dashboard in this simplified build.
 
 ---
 
@@ -76,7 +77,7 @@ Default first release.
 
 - Local SQLite database
 - One desktop user at a time
-- No login screen
+- Login through Laravel desktop API
 - No admin interface
 - No network required
 
@@ -93,9 +94,102 @@ Do not build shared database mode in Phase 1 unless explicitly requested.
 
 ---
 
+## 4.3 Laravel Desktop Sync API
+
+The Laravel web application owns the detailed timesheet records and detail pages. The desktop app should authenticate through Laravel and sync the employee's saved timesheets with timer logs.
+
+API endpoints:
+
+```text
+POST /api/desktop/login
+GET  /api/desktop/me
+GET  /api/desktop/bootstrap
+GET  /api/desktop/timesheets
+POST /api/desktop/timesheets
+```
+
+Login request:
+
+```json
+{
+  "email": "employee@example.com",
+  "password": "password"
+}
+```
+
+Login response includes:
+
+```text
+token_type
+token
+user
+user.employee
+```
+
+Authenticated requests use:
+
+```text
+Authorization: Bearer <token>
+```
+
+Desktop timesheet sync payload:
+
+```json
+{
+  "desktop_uuid": "uuid-from-desktop",
+  "project_id": 1,
+  "project_task_id": 1,
+  "date": "2026-06-04",
+  "start_time": "09:08 AM",
+  "end_time": "09:17 AM",
+  "hours_spent": 0.15,
+  "timer_elapsed_seconds": 540,
+  "timer_logs": [
+    {
+      "action": "Started",
+      "time": "04/06/2026 09:08:48 AM",
+      "elapsed": "00:00:00",
+      "total": "00:00:00",
+      "note": ""
+    }
+  ],
+  "description": "Worked on layout",
+  "is_billable": true
+}
+```
+
+Rules:
+
+- Login is employee-scoped.
+- API-created timesheets always use the authenticated employee.
+- Desktop must not send another employee id.
+- Detailed timesheet information is viewed in Laravel web pages.
+- API responses can include `web_url` so the desktop app can open the Laravel detail page.
+- `desktop_uuid` allows the desktop app to re-sync the same local row without creating duplicates.
+
+---
+
 ## 5. Main Screens
 
-### 5.1 All Timesheets Screen
+### 5.1 Login Screen
+
+Main visible elements:
+
+- Laravel URL field
+- Email field
+- Password field
+- Login button
+
+Expected behavior:
+
+- Desktop app logs in through `POST /api/desktop/login`.
+- Authenticated requests use the returned bearer token.
+- The logged-in employee is fixed for the desktop session.
+- Projects, tasks, and existing employee timesheets load from Laravel after login.
+
+---
+
+### 5.2 All Timesheets Screen
 
 Main visible elements:
 
@@ -119,7 +213,7 @@ Expected behavior:
 
 ---
 
-### 5.2 Create New Timesheet Screen
+### 5.3 Create New Timesheet Screen
 
 Main visible elements:
 
@@ -146,7 +240,10 @@ Expected behavior:
 - User can press Stop to stop the timer.
 - Timer automatically stops after 10 seconds with no keyboard or mouse activity.
 - Timer start/stop updates start time, end time, elapsed time, and hours spent.
-- User can save the timesheet locally.
+- User can save the timesheet to Laravel through `POST /api/desktop/timesheets`.
+- User can save as Draft from desktop.
+- User can save and submit as Final from desktop. Final rows are sent to Laravel as `submitted`.
+- Clicking a draft row in All Timesheets opens it in Create New so the user can resume and continue the timer/logs.
 
 ---
 
@@ -769,9 +866,9 @@ Do not build role-based access control in this build.
 
 Rules:
 
-- The app opens directly as a single-user tracker.
+- The app starts with Laravel employee login.
 - No admin interface.
-- No login screen.
+- No local login or admin user management.
 - No manager approval.
 - No payroll role.
 - No permission configuration screen.
@@ -1050,6 +1147,8 @@ Rules:
 ### UI Smoke Tests
 
 - App launches.
+- Login screen appears.
+- Login loads employee-scoped Laravel data.
 - All Timesheets tab loads.
 - Create New tab loads.
 - Run button starts the timer.
@@ -1118,7 +1217,7 @@ The application is complete when:
 - The app runs as a Windows desktop `.exe`.
 - The app does not require Laravel, PHP, Apache/Nginx, or a browser.
 - First launch creates or connects to a writable SQLite database.
-- The app opens without login.
+- The app opens with Laravel API login.
 - There is no admin interface.
 - User can view one All Timesheets page.
 - User can open one Create New page.

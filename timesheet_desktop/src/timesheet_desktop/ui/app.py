@@ -7,7 +7,9 @@ import sys
 import time
 import tkinter as tk
 from tkinter import messagebox, ttk
+import uuid
 
+from ..api_client import ApiError, LaravelTimesheetApi
 from ..config import APP_NAME, database_path
 from ..database import connect
 from ..services import CurrentUser, LookupService, TimesheetService
@@ -47,6 +49,11 @@ class TimesheetDesktopApp:
         self.root.title(APP_NAME)
         self.root.geometry("1140x760")
         self.root.minsize(980, 650)
+        self.api = LaravelTimesheetApi("http://127.0.0.1:8000")
+        self.remote_user: dict | None = None
+        self.remote_projects: list[dict] = []
+        self.remote_timesheets: list[dict] = []
+        self.current_desktop_uuid: str | None = None
         self.user = CurrentUser(1, "User", "user@example.com", "Employee")
         self.lookup = LookupService(self.conn)
         self.timesheets = TimesheetService(self.conn)
@@ -62,7 +69,7 @@ class TimesheetDesktopApp:
         self._bind_activity_tracking()
 
     def run(self) -> None:
-        self._show_main()
+        self._show_login()
         self.root.mainloop()
 
     def _configure_style(self) -> None:
@@ -102,6 +109,52 @@ class TimesheetDesktopApp:
         for child in self.root.winfo_children():
             child.destroy()
 
+    def _show_login(self) -> None:
+        self._clear()
+        wrapper = ttk.Frame(self.root, padding=24, style="App.TFrame")
+        wrapper.pack(fill="both", expand=True)
+
+        panel = ttk.Frame(wrapper, padding=28, style="Surface.TFrame")
+        panel.place(relx=0.5, rely=0.5, anchor="center", width=460)
+
+        ttk.Label(panel, text="Timesheet Tracker", style="SurfaceTitle.TLabel").pack(anchor="w")
+        ttk.Label(panel, text="Login with your Laravel employee account", style="Section.TLabel").pack(anchor="w", pady=(4, 20))
+
+        api_url_var = tk.StringVar(value=self.api.base_url)
+        email_var = tk.StringVar()
+        password_var = tk.StringVar()
+
+        self._login_field(panel, "Laravel URL", ttk.Entry(panel, textvariable=api_url_var))
+        self._login_field(panel, "Email", ttk.Entry(panel, textvariable=email_var))
+        password_entry = ttk.Entry(panel, textvariable=password_var, show="*")
+        self._login_field(panel, "Password", password_entry)
+
+        status_var = tk.StringVar(value="")
+        ttk.Label(panel, textvariable=status_var, style="Section.TLabel").pack(anchor="w", pady=(4, 12))
+
+        def submit() -> None:
+            try:
+                status_var.set("Connecting...")
+                self.root.update_idletasks()
+                self.api = LaravelTimesheetApi(api_url_var.get().strip())
+                session = self.api.login(email_var.get().strip(), password_var.get())
+                bootstrap = self.api.bootstrap()
+                self.remote_user = session.user
+                self.remote_projects = bootstrap.get("projects", [])
+                self.remote_timesheets = self.api.timesheets()
+            except ApiError as exc:
+                status_var.set("")
+                messagebox.showerror("Login failed", str(exc))
+                return
+            self._show_main()
+
+        ttk.Button(panel, text="Login", style="Accent.TButton", command=submit).pack(fill="x", pady=(10, 0))
+        password_entry.bind("<Return>", lambda _event: submit())
+
+    def _login_field(self, parent: ttk.Frame, label: str, widget: tk.Widget) -> None:
+        ttk.Label(parent, text=label, style="Section.TLabel").pack(anchor="w", pady=(0, 4))
+        widget.pack(fill="x", pady=(0, 12), ipady=4)
+
     def _show_main(self) -> None:
         self._clear()
         container = ttk.Frame(self.root, padding=16, style="App.TFrame")
@@ -112,16 +165,17 @@ class TimesheetDesktopApp:
         title_group = tk.Frame(header, bg=ACCENT_COLOR)
         title_group.pack(side="left")
         tk.Label(title_group, text="Timesheet Tracker", bg=ACCENT_COLOR, fg="white", font=("Segoe UI", 22, "bold")).pack(anchor="w")
-        tk.Label(title_group, text="Track focused work against projects and tasks", bg=ACCENT_COLOR, fg="#FCE7F3", font=("Segoe UI", 10)).pack(anchor="w")
-        tk.Label(header, text="Single user desktop", bg=ACCENT_DARK, fg="white", padx=12, pady=7, font=("Segoe UI", 9, "bold")).pack(side="right")
+        employee_name = self.remote_user.get("employee", {}).get("name", "Employee") if self.remote_user else "Employee"
+        tk.Label(title_group, text=f"Track focused work for {employee_name}", bg=ACCENT_COLOR, fg="#FCE7F3", font=("Segoe UI", 10)).pack(anchor="w")
+        tk.Label(header, text="Laravel synced", bg=ACCENT_DARK, fg="white", padx=12, pady=7, font=("Segoe UI", 9, "bold")).pack(side="right")
 
-        notebook = ttk.Notebook(container)
-        notebook.pack(fill="both", expand=True)
+        self.notebook = ttk.Notebook(container)
+        self.notebook.pack(fill="both", expand=True)
 
-        self.all_frame = ttk.Frame(notebook, padding=16, style="App.TFrame")
-        self.create_frame = ttk.Frame(notebook, style="App.TFrame")
-        notebook.add(self.all_frame, text="All Timesheets")
-        notebook.add(self.create_frame, text="Create New")
+        self.all_frame = ttk.Frame(self.notebook, padding=16, style="App.TFrame")
+        self.create_frame = ttk.Frame(self.notebook, style="App.TFrame")
+        self.notebook.add(self.all_frame, text="All Timesheets")
+        self.notebook.add(self.create_frame, text="Create New")
 
         self._build_all_timesheets()
         self._build_create_new()
@@ -130,19 +184,22 @@ class TimesheetDesktopApp:
         for child in self.all_frame.winfo_children():
             child.destroy()
 
-        rows = self.lookup.timesheets()
-        total_hours = sum(float(row["hours_spent"] or 0) for row in rows)
-        billable_count = sum(1 for row in rows if row["is_billable"])
+        rows = self.remote_timesheets
+        total_hours = sum(float(row.get("hours_spent") or 0) for row in rows)
+        billable_count = sum(1 for row in rows if row.get("is_billable"))
 
         toolbar = ttk.Frame(self.all_frame, padding=16, style="Surface.TFrame")
         toolbar.pack(fill="x", pady=(0, 12))
         ttk.Label(toolbar, text="All Timesheets", style="SurfaceTitle.TLabel").pack(side="left")
-        ttk.Button(toolbar, text="Refresh", style="Ghost.TButton", command=self._build_all_timesheets).pack(side="right")
+        ttk.Button(toolbar, text="Refresh", style="Ghost.TButton", command=self._refresh_remote_timesheets).pack(side="right")
         self._metric(toolbar, "Entries", str(len(rows))).pack(side="right", padx=(0, 16))
         self._metric(toolbar, "Billable", str(billable_count)).pack(side="right", padx=(0, 10))
         self._metric(toolbar, "Total Hours", f"{total_hours:g}").pack(side="right", padx=(0, 10))
 
         tree = self._timesheet_tree(self.all_frame, rows)
+        tree.bind("<ButtonRelease-1>", lambda _event: self._open_selected_draft(tree, notify=False))
+        tree.bind("<Double-1>", lambda _event: self._open_selected_draft(tree, notify=True))
+        tree.bind("<Return>", lambda _event: self._open_selected_draft(tree, notify=True))
         tree.pack(fill="both", expand=True)
 
     def _metric(self, parent: ttk.Frame, label: str, value: str) -> tk.Frame:
@@ -177,23 +234,24 @@ class TimesheetDesktopApp:
             "description": 260,
         }
         for key, label in headings.items():
-            tree.heading(key, text=label)
-            tree.column(key, width=widths[key], anchor="w")
+            tree.heading(key, text=label, anchor="center")
+            tree.column(key, width=widths[key], anchor="center")
         for row in rows:
             tag = "even" if len(tree.get_children()) % 2 == 0 else "odd"
             tree.insert(
                 "",
                 "end",
+                iid=str(row.get("desktop_uuid") or row.get("id")),
                 values=(
                     row["date"],
-                    row["employee"],
-                    row["project"],
-                    row["task"],
-                    row["start_time"] or "",
-                    row["end_time"] or "",
-                    f'{row["hours_spent"]:g}',
-                    "Yes" if row["is_billable"] else "No",
-                    row["description"] or "",
+                    self._row_employee_name(row),
+                    self._row_project_name(row),
+                    self._row_task_title(row),
+                    row.get("start_time") or "",
+                    row.get("end_time") or "",
+                    f'{float(row.get("hours_spent") or 0):g}',
+                    "Yes" if row.get("is_billable") else "No",
+                    row.get("description") or "",
                 ),
                 tags=(tag,),
             )
@@ -226,13 +284,15 @@ class TimesheetDesktopApp:
         canvas.bind("<Configure>", update_content_width)
         canvas.bind_all("<MouseWheel>", on_mousewheel, add="+")
 
-        employees = self.lookup.employees()
-        projects = self.lookup.projects()
-        self.employee_map = {row["name"]: row["id"] for row in employees}
+        projects = self.remote_projects
+        employee_name = self.remote_user.get("employee", {}).get("name", "Employee") if self.remote_user else "Employee"
+        employee_id = self.remote_user.get("employee", {}).get("id", 0) if self.remote_user else 0
+        self.employee_map = {employee_name: employee_id}
         self.project_map = {row["name"]: row["id"] for row in projects}
+        self.project_lookup = {row["id"]: row for row in projects}
         self.task_map: dict[str, int] = {}
 
-        self.employee_var = tk.StringVar(value=employees[0]["name"] if employees else "")
+        self.employee_var = tk.StringVar(value=employee_name)
         self.project_var = tk.StringVar(value=projects[0]["name"] if projects else "")
         self.task_var = tk.StringVar()
         self.date_var = tk.StringVar(value=date.today().strftime("%d/%m/%Y"))
@@ -244,15 +304,17 @@ class TimesheetDesktopApp:
         self.timer_text_var = tk.StringVar(value="00:00:00")
         self.timer_status_var = tk.StringVar(value="Stopped")
         self.timer_total_var = tk.StringVar(value="Total Time Spent: 0 hr 0 min 0 sec")
+        self.current_desktop_uuid = None
 
         form = ttk.Frame(scroll_content, padding=18, style="Surface.TFrame")
         form.pack(fill="x")
         form.columnconfigure(1, weight=1)
         form.columnconfigure(3, weight=1)
 
-        ttk.Label(form, text="Create New Timesheet", style="SurfaceTitle.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 16))
+        self.form_title_var = tk.StringVar(value="Create New Timesheet")
+        ttk.Label(form, textvariable=self.form_title_var, style="SurfaceTitle.TLabel").grid(row=0, column=0, columnspan=4, sticky="w", pady=(0, 16))
 
-        self._field(form, "Employee", self._combo(form, self.employee_var, list(self.employee_map)), 1, 0)
+        self._field(form, "Employee", ttk.Label(form, textvariable=self.employee_var, style="TimerMeta.TLabel"), 1, 0)
         self._field(form, "Date", ttk.Entry(form, textvariable=self.date_var), 1, 2)
         project_combo = self._combo(form, self.project_var, list(self.project_map))
         self._field(form, "Project", project_combo, 2, 0)
@@ -269,7 +331,8 @@ class TimesheetDesktopApp:
         actions = ttk.Frame(scroll_content, style="App.TFrame")
         actions.pack(fill="x", pady=(12, 0))
         ttk.Button(actions, text="Clear", style="Ghost.TButton", command=self._clear_form).pack(side="right")
-        ttk.Button(actions, text="Save Timesheet", style="Accent.TButton", command=self._save_timesheet).pack(side="right", padx=(0, 8))
+        ttk.Button(actions, text="Save and Submit Final", style="Accent.TButton", command=lambda: self._save_timesheet(submit_final=True)).pack(side="right", padx=(0, 8))
+        ttk.Button(actions, text="Save Draft", style="Ghost.TButton", command=lambda: self._save_timesheet(submit_final=False)).pack(side="right", padx=(0, 8))
 
         self.project_var.trace_add("write", self._load_tasks)
         self._load_tasks()
@@ -319,7 +382,8 @@ class TimesheetDesktopApp:
 
     def _load_tasks(self, *_args) -> None:
         project_id = self.project_map.get(self.project_var.get())
-        task_rows = self.lookup.tasks_for_project(project_id) if project_id else []
+        project = self.project_lookup.get(project_id, {}) if project_id else {}
+        task_rows = project.get("tasks", [])
         self.task_map = {f"{self.project_var.get()} / {row['title']}": row["id"] for row in task_rows}
         self.task_combo["values"] = list(self.task_map)
         self.task_var.set(next(iter(self.task_map), ""))
@@ -429,38 +493,157 @@ class TimesheetDesktopApp:
                 pass
         raise ValueError("Date must be dd/mm/yyyy.")
 
-    def _save_timesheet(self) -> None:
+    def _save_timesheet(self, *, submit_final: bool) -> None:
         try:
             hours = Decimal(self.hours_var.get())
             description = self.description.get("1.0", "end").strip()
-            note = self.note_var.get().strip()
-            if note:
-                description = f"{description}\nTimer note: {note}".strip()
-            self.timesheets.create_timesheet(
-                employee_id=self.employee_map[self.employee_var.get()],
-                project_id=self.project_map[self.project_var.get()],
-                project_task_id=self.task_map[self.task_var.get()],
-                entry_date=self._parse_date(),
-                start_time=None if self.start_time_var.get().startswith("--") else self.start_time_var.get(),
-                end_time=None if self.end_time_var.get().startswith("--") else self.end_time_var.get(),
-                hours_spent=hours,
-                description=description,
-                current_user=self.user,
-                is_billable=self.billable_var.get() == "Yes",
+            self.api.create_timesheet(
+                {
+                    "desktop_uuid": self.current_desktop_uuid or str(uuid.uuid4()),
+                    "project_id": self.project_map[self.project_var.get()],
+                    "project_task_id": self.task_map[self.task_var.get()],
+                    "date": self._parse_date().isoformat(),
+                    "start_time": None if self.start_time_var.get().startswith("--") else self.start_time_var.get(),
+                    "end_time": None if self.end_time_var.get().startswith("--") else self.end_time_var.get(),
+                    "hours_spent": float(hours),
+                    "timer_elapsed_seconds": self.total_elapsed_seconds,
+                    "timer_logs": self._timer_logs_payload(save_action="Submitted Final" if submit_final else "Saved Draft"),
+                    "description": description,
+                    "is_billable": self.billable_var.get() == "Yes",
+                    "submit_final": submit_final,
+                }
             )
-        except (KeyError, ValueError, InvalidOperation) as exc:
+        except (KeyError, ValueError, InvalidOperation, ApiError) as exc:
             messagebox.showerror("Save Timesheet", str(exc))
             return
-        messagebox.showinfo("Save Timesheet", "Timesheet saved.")
-        self._add_action("Saved")
-        self._build_all_timesheets()
+        self._add_action("Submitted Final" if submit_final else "Saved Draft")
+        messagebox.showinfo("Save Timesheet", "Timesheet submitted as final." if submit_final else "Timesheet saved as draft.")
+        self._refresh_remote_timesheets()
         self._clear_form()
+
+    def _timer_logs_payload(self, *, save_action: str | None = None) -> list[dict]:
+        logs = []
+        for item in self.action_tree.get_children():
+            action, logged_at, elapsed, total, note = self.action_tree.item(item, "values")
+            logs.append({"action": action, "time": logged_at, "elapsed": elapsed, "total": total, "note": note})
+        if save_action:
+            logs.append(
+                {
+                    "action": save_action,
+                    "time": datetime.now().strftime("%d/%m/%Y %I:%M:%S %p"),
+                    "elapsed": "00:00:00",
+                    "total": self._format_hms(self.total_elapsed_seconds),
+                    "note": self.note_var.get().strip(),
+                }
+            )
+        return logs
+
+    def _refresh_remote_timesheets(self) -> None:
+        try:
+            self.remote_timesheets = self.api.timesheets()
+        except ApiError as exc:
+            messagebox.showerror("Refresh failed", str(exc))
+            return
+        self._build_all_timesheets()
+
+    def _open_selected_draft(self, tree: ttk.Treeview, *, notify: bool) -> None:
+        selected = tree.selection()
+        if not selected:
+            return
+        desktop_uuid = selected[0]
+        row = next((item for item in self.remote_timesheets if str(item.get("desktop_uuid") or item.get("id")) == desktop_uuid), None)
+        if not row:
+            return
+        if row.get("status") != "draft":
+            if notify:
+                messagebox.showinfo("Timesheet", "Only draft timesheets can be resumed.")
+            return
+        self._load_draft_into_form(row)
+
+    def _load_draft_into_form(self, row: dict) -> None:
+        if self.timer_running:
+            self._stop_timer_by_button()
+        self.current_desktop_uuid = row.get("desktop_uuid")
+        self.form_title_var.set("Resume Draft Timesheet")
+        self.notebook.select(self.create_frame)
+        self.date_var.set(self._display_date(row.get("date")))
+        project_name = self._row_project_name(row)
+        if project_name in self.project_map:
+            self.project_var.set(project_name)
+            self._load_tasks()
+        task_title = self._row_task_title(row)
+        task_key = next((key for key in self.task_map if key.endswith(f" / {task_title}")), "")
+        if task_key:
+            self.task_var.set(task_key)
+        self.start_time_var.set(self._display_time(row.get("start_time")) or "--:-- --")
+        self.end_time_var.set(self._display_time(row.get("end_time")) or "--:-- --")
+        self.hours_var.set(str(row.get("hours_spent") or "1.00"))
+        self.billable_var.set("Yes" if row.get("is_billable") else "No")
+        self.description.delete("1.0", "end")
+        self.description.insert("1.0", row.get("description") or "")
+        self.total_elapsed_seconds = int(row.get("timer_elapsed_seconds") or 0)
+        self.current_elapsed_seconds = 0
+        self._refresh_timer_labels()
+        self._set_timer_buttons(running=False)
+        for item in self.action_tree.get_children():
+            self.action_tree.delete(item)
+        for log in row.get("timer_logs") or []:
+            tag = "even" if len(self.action_tree.get_children()) % 2 == 0 else "odd"
+            self.action_tree.insert(
+                "",
+                "end",
+                values=(
+                    log.get("action", ""),
+                    log.get("time", ""),
+                    log.get("elapsed", ""),
+                    log.get("total", ""),
+                    log.get("note", ""),
+                ),
+                tags=(tag,),
+            )
+        self.action_tree.tag_configure("even", background=SURFACE_COLOR)
+        self.action_tree.tag_configure("odd", background="#F8FAFC")
+
+    def _display_date(self, value: str | None) -> str:
+        if not value:
+            return date.today().strftime("%d/%m/%Y")
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").strftime("%d/%m/%Y")
+        except ValueError:
+            return value
+
+    def _display_time(self, value: str | None) -> str:
+        if not value:
+            return ""
+        for fmt in ("%H:%M:%S", "%H:%M"):
+            try:
+                return datetime.strptime(value, fmt).strftime("%I:%M %p")
+            except ValueError:
+                pass
+        return value
+
+    def _row_employee_name(self, row: dict) -> str:
+        return self.remote_user.get("employee", {}).get("name", "") if self.remote_user else ""
+
+    def _row_project_name(self, row: dict) -> str:
+        project = row.get("project")
+        if isinstance(project, dict):
+            return project.get("name") or ""
+        return str(project or "")
+
+    def _row_task_title(self, row: dict) -> str:
+        task = row.get("task")
+        if isinstance(task, dict):
+            return task.get("title") or ""
+        return str(task or "")
 
     def _clear_form(self) -> None:
         if self.timer_running:
             self._stop_timer_by_button()
         self._add_action("Cleared")
         self.date_var.set(date.today().strftime("%d/%m/%Y"))
+        self.current_desktop_uuid = None
+        self.form_title_var.set("Create New Timesheet")
         self.start_time_var.set("--:-- --")
         self.end_time_var.set("--:-- --")
         self.hours_var.set("1.00")

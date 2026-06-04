@@ -17,7 +17,33 @@ cd timesheet_desktop
 python run.py
 ```
 
-The app opens directly as a single-user timesheet tracker. There is no admin/login interface in this build.
+The app starts with a Laravel login screen and syncs timesheets through:
+
+```text
+http://127.0.0.1:8000/api/desktop
+```
+
+Run the Laravel app and make sure migrations are applied before logging in:
+
+```bash
+php artisan migrate
+php artisan db:seed
+php artisan serve
+```
+
+Test login credentials:
+
+```text
+Laravel URL: http://127.0.0.1:8000
+Email: admin@horilla.test
+Password: password
+```
+
+Timesheet workflow:
+
+- `Save Draft` saves the entry to Laravel as `draft`.
+- Clicking a draft row in `All Timesheets` reopens it in `Create New` so work can resume.
+- `Save and Submit Final` saves the entry to Laravel as `submitted`.
 
 ## Run Tests
 
