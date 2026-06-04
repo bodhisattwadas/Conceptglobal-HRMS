@@ -1,0 +1,4 @@
+# The first runnable build uses only Python standard library modules.
+# Optional packaging dependency:
+# pyinstaller
+

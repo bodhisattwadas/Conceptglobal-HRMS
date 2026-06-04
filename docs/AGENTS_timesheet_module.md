@@ -12,22 +12,22 @@ The app should keep the familiar OpenHRMS / Odoo-style timesheet workflow: proje
 
 ## 2. Main Goal
 
-Build a desktop application that supports:
+Build a simple single-user desktop application that supports:
 
 - Project task wise timesheet entry
-- Employee wise timesheet tracking
+- Employee selection for timesheet rows
 - Project wise and task wise hour summaries
-- Planned hours vs spent hours
-- Task progress percentage
-- Grouped timesheet list
-- Timesheet lines inside project task details
-- Manager review and reporting
-- Local role-based access control
-- CSV/XLSX/PDF export
+- One All Timesheets screen
+- One Create New Timesheet screen
+- Manual start time, end time, hours spent, billable, and description fields
+- Work timer with Run and Stop buttons
+- Automatic timer stop after 10 seconds of mouse/keyboard inactivity
+- Local SQLite storage
 - Windows `.exe` packaging
-- Optional backup and restore of the local database
 
 The first version should work fully offline on one machine using a local SQLite database.
+
+Do not build an admin interface, login screen, manager review flow, role management, payroll screens, or reporting dashboard in this simplified build.
 
 ---
 
@@ -76,8 +76,8 @@ Default first release.
 
 - Local SQLite database
 - One desktop user at a time
-- Local login screen
-- Role stored in local database
+- No login screen
+- No admin interface
 - No network required
 
 ### 4.2 Optional Shared Database Mode
@@ -95,141 +95,58 @@ Do not build shared database mode in Phase 1 unless explicitly requested.
 
 ## 5. Main Screens
 
-### 5.1 Login Screen
+### 5.1 All Timesheets Screen
 
 Main visible elements:
 
-- App name: Timesheet Desktop
-- Username/email field
-- Password field
-- Login button
-- Remember last user checkbox
-- Database status indicator
-
-Expected behavior:
-
-- User logs in with local credentials.
-- App loads permissions based on the user's role.
-- First run creates an admin user through a setup wizard.
-
----
-
-### 5.2 Dashboard
-
-Main visible elements:
-
-- Top module navigation
-- Sidebar or tab navigation
-- Summary tiles:
-  - Today logged hours
-  - This week logged hours
-  - Submitted hours
-  - Approved hours
-  - Over planned tasks
-- Recent timesheets table
-- Quick action buttons:
-  - New Timesheet
-  - Projects
-  - Tasks
-  - Reports
-  - Export
-
-Expected behavior:
-
-- Employee sees own totals.
-- Manager sees team/project totals.
-- HR/Admin sees company-wide totals.
-
----
-
-### 5.3 Project Task Detail With Timesheets Tab
-
-Screen path:
-
-```text
-Projects / Office Design / Meeting Room Furnitures
-```
-
-Main visible elements:
-
-- Top navigation bar
-- Breadcrumb title
-- Buttons: Edit, Create, Print, Action, Assign to Me
-- Status bar: New, In Progress, Done, Cancelled
-- Task title
-- Favorite/star icon
-- Project field
-- Assignees field with employee avatar or initials
-- Customer field
-- Deadline field
-- Tags field
-- Recurrent checkbox
-- Tabs: Description, Timesheets, Sub-tasks, Blocked By
-- Timesheets tab fields:
-  - Initially Planned Hours
-  - Progress bar
-  - Date
-  - Employee
-  - Description
-  - Hours Spent
-  - Row actions
-
-Expected behavior:
-
-- User opens a project task.
-- User switches to the Timesheets tab.
-- User can view all time entries related to that task.
-- User can add a new timesheet line if allowed.
-- Progress updates from spent hours and planned hours.
-- Extra hours are visible when spent hours exceed planned hours.
-
----
-
-### 5.4 All Timesheets List
-
-Screen path:
-
-```text
-Timesheets / All Timesheets
-```
-
-Main visible elements:
-
-- Module header
-- Navigation: Timesheets, Reporting, Configuration
 - Page title: All Timesheets
-- Search bar
-- Active search chips
-- Export button
-- Filters button
-- Group By button
-- Favorites button
-- View switcher:
-  - List view
-  - Kanban/grid view, optional
-  - Pivot/table view
-  - Graph/chart view
-- List columns:
+- Refresh button
+- Table columns:
   - Date
   - Employee
   - Project
   - Task
-  - Description
+  - Start Time
+  - End Time
   - Hours Spent
-  - Status
-- Grouping by employee
-- Group total hours shown on the right
-- Expand/collapse grouped rows
-- Add line option for inline creation
+  - Billable
+  - Description
 
 Expected behavior:
 
-- HR/Admin can see all timesheets.
-- Manager can see team/project timesheets.
-- Employee can see own timesheets.
-- User can group by employee, project, task, date, week, month, department, status, or billable.
-- Total hours show at group level.
-- Export generates CSV/XLSX/PDF.
+- User can view all saved timesheet rows.
+- New saved rows appear after refresh or after saving from Create New.
+
+---
+
+### 5.2 Create New Timesheet Screen
+
+Main visible elements:
+
+- Employee selector
+- Date field
+- Project selector
+- Task selector
+- Start Time field
+- End Time field
+- Hours Spent field
+- Billable selector
+- Description text area
+- Work Timer section:
+  - Timer display
+  - Notes field
+  - Run button
+  - Stop button
+  - Action log table
+
+Expected behavior:
+
+- User can manually enter a timesheet.
+- User can press Run to start the timer.
+- User can press Stop to stop the timer.
+- Timer automatically stops after 10 seconds with no keyboard or mouse activity.
+- Timer start/stop updates start time, end time, elapsed time, and hours spent.
+- User can save the timesheet locally.
 
 ---
 
@@ -306,23 +223,26 @@ Extra: 0
 
 ---
 
-### 6.3 Approval Workflow
+### 6.3 Work Timer
 
-```text
-Draft -> Submitted -> Approved
-              |
-              v
-           Rejected
-```
+The Create New screen includes a simple work timer.
 
-Status meaning:
+Timer behavior:
 
-- Draft: employee is still editing.
-- Submitted: sent for manager review.
-- Approved: locked and ready for reporting, payroll, or billing.
-- Rejected: returned to employee with a reason.
+- User presses Run to start tracking.
+- Start Time is filled from the current local time.
+- Timer display updates every second.
+- The Total line below the timer updates every second while the timer runs.
+- Total time accumulates across multiple Run/Stop cycles until the form is cleared.
+- User can type a short note while the timer is running.
+- User presses Stop to end tracking manually.
+- Timer can stop either from the Stop button or from inactivity timeout.
+- End Time is filled from the current local time.
+- Hours Spent is calculated from elapsed seconds.
+- If there is no mouse or keyboard activity anywhere on the system for 10 seconds, the timer stops automatically.
+- Start, button stop, timeout stop, save, and clear actions appear in the action log table.
 
-For a simple first version, direct approved entries can be allowed by setting.
+The timer is local only. Do not build approval states, manager review, or payroll locking for this simplified tracker.
 
 ---
 
@@ -367,30 +287,18 @@ timesheet_desktop/
         timesheet_repository.py
         report_repository.py
       services/
-        auth_service.py
-        permission_service.py
         timesheet_service.py
         timesheet_progress_service.py
-        timesheet_approval_service.py
+        work_timer_service.py
         timesheet_report_service.py
         timesheet_export_service.py
         backup_service.py
       ui/
         main_window.py
-        login_window.py
-        dashboard_view.py
         timesheet_list_view.py
-        timesheet_form_dialog.py
-        project_list_view.py
-        project_task_detail_view.py
-        reports_view.py
-        settings_view.py
+        timesheet_create_view.py
         widgets/
-          filter_bar.py
-          grouped_table.py
-          progress_bar.py
-          status_badge.py
-          date_range_picker.py
+          work_timer.py
       assets/
         icons/
         styles/
@@ -571,14 +479,7 @@ end_time nullable
 hours_spent decimal
 description text nullable
 is_billable boolean default false
-status enum: draft, submitted, approved, rejected
-submitted_at nullable
-submitted_by nullable
-approved_at nullable
-approved_by nullable
-rejected_at nullable
-rejected_by nullable
-rejection_reason text nullable
+            status enum: saved
 source enum: manual, project_task, import, admin_adjustment
 created_by
 updated_by
@@ -618,12 +519,9 @@ allow_future_entries boolean default false
 future_entry_limit_days integer default 0
 allow_employee_edit_after_submit boolean default false
 allow_employee_delete_after_submit boolean default false
-require_approval boolean default false
 minimum_hours_per_entry decimal default 0.25
 maximum_hours_per_day decimal default 24
 restrict_to_assigned_tasks boolean default false
-lock_after_payroll boolean default true
-direct_approve_entries boolean default false
 created_by
 updated_by
 created_at
@@ -677,7 +575,7 @@ Relationships:
 - ProjectTask has many assignees.
 - ProjectTask has many timesheets.
 - Timesheet belongs to employee, project, and task.
-- Timesheet may belong to an approver user.
+- Timesheet stores local start time, end time, hours, and billable state.
 
 ---
 
@@ -719,20 +617,20 @@ get_extra_hours(task_id: int) -> Decimal
 
 Logic:
 
-- Sum approved entries by default.
-- If setting allows draft/submitted in progress, include those statuses.
+- Sum saved entries.
 - Update task spent hours.
 - Update task progress.
 - Update task remaining and extra hours.
 
-### 10.3 TimesheetApprovalService
+### 10.3 WorkTimerService
 
 Suggested methods:
 
 ```python
-submit(timesheet_id: int, current_user: User) -> Timesheet
-approve(timesheet_id: int, current_user: User) -> Timesheet
-reject(timesheet_id: int, reason: str, current_user: User) -> Timesheet
+start(note: str = "") -> None
+stop(reason: str = "Stopped") -> TimerSession
+elapsed_seconds() -> int
+should_auto_stop(last_activity_at: float) -> bool
 ```
 
 ### 10.4 TimesheetReportService
@@ -787,18 +685,13 @@ Use:
 - Search bar with filters
 - Group By and Favorites controls
 - List/grid/pivot/chart view buttons where practical
-- Status badges for draft/submitted/approved/rejected
+- Clear table and form controls
 
 Recommended desktop navigation:
 
 ```text
-Dashboard
-Timesheets
-Projects
-Tasks
-Reports
-Employees
-Settings
+All Timesheets
+Create New
 ```
 
 ### 11.2 Timesheet List Page
@@ -807,65 +700,44 @@ Sections:
 
 ```text
 Header:
-- Timesheets title
-- New button
-- Export button
-
-Search:
-- Search box
-- Filter chips
-
-Toolbar:
-- Filters
-- Group By
-- Favorites
-- View switcher
+- All Timesheets title
+- Refresh button
 
 Table:
 - Date
 - Employee
 - Project
 - Task
-- Description
+- Start Time
+- End Time
 - Hours Spent
-- Status
 - Billable
-
-Grouped Rows:
-- Group name
-- Entry count
-- Total hours
+- Description
 ```
 
-### 11.3 Project Task Timesheet Tab
+### 11.3 Create New Page
 
 Layout:
 
 ```text
-Initially Planned Hours | Progress bar | Spent | Remaining | Extra
+Employee | Date
+Project  | Task
+Start Time | End Time
+Hours Spent | Billable
+Description
+Work Timer
+Action Log
 
-Timesheet table:
-Date | Employee | Description | Hours Spent | Status | Action
-```
-
-Add row:
-
-```text
-Add a line
+Buttons:
+Run | Stop | Save Timesheet | Clear
 ```
 
 ### 11.4 Dialogs
 
-Use modal dialogs for:
+Use dialogs only for:
 
-- New timesheet
-- Edit timesheet
-- Submit confirmation
-- Approve confirmation
-- Reject with reason
-- Export options
-- Backup and restore
-- Settings
+- Validation errors
+- Save success messages
 
 Forms must show validation messages near the field.
 
@@ -873,98 +745,36 @@ Forms must show validation messages near the field.
 
 ## 12. Filters
 
-Basic filters:
+Filters are not required for the first simplified build.
+
+Future optional filters:
 
 - Date range
 - Employee
-- Department
 - Project
 - Task
-- Status
 - Billable
-
-Quick filters:
-
-- My Timesheets
-- This Week
-- This Month
-- Last Month
-- Submitted
-- Approved
-- Rejected
-- Billable
-- Non-billable
 
 ---
 
 ## 13. Group By Options
 
-- Employee
-- Project
-- Task
-- Department
-- Date
-- Week
-- Month
-- Status
-- Billable
-
-Group total must show:
-
-- Total entries
-- Total hours
-- Approved hours
-- Billable hours
+Grouping is not required for the first simplified build.
 
 ---
 
 ## 14. Access Control
 
-Roles:
-
-| Role | Access |
-|---|---|
-| Super Admin | Full access |
-| HR Admin | View all, report all, export all |
-| Project Manager | View project and team timesheets |
-| Team Manager | View team timesheets |
-| Employee | Create and view own timesheets |
-| Payroll User | View approved hours for payroll |
-| Client User, optional | View billable approved timesheets only |
-
-Suggested permission names:
-
-```text
-timesheets.view_own
-timesheets.view_team
-timesheets.view_all
-timesheets.create_own
-timesheets.create_for_others
-timesheets.edit_own
-timesheets.edit_all
-timesheets.delete_own
-timesheets.delete_all
-timesheets.submit
-timesheets.approve
-timesheets.reject
-timesheets.export
-timesheets.report
-timesheets.configure
-projects.manage
-tasks.manage
-employees.manage
-settings.manage
-backup.manage
-```
+Do not build role-based access control in this build.
 
 Rules:
 
-- Employee cannot edit approved timesheets.
-- Employee cannot delete approved timesheets.
-- Manager can approve or reject team timesheets.
-- HR Admin can correct any timesheet with audit log.
-- Only authorized users can export all timesheets.
-- Payroll locked records cannot be changed except by Super Admin.
+- The app opens directly as a single-user tracker.
+- No admin interface.
+- No login screen.
+- No manager approval.
+- No payroll role.
+- No permission configuration screen.
 
 ---
 
@@ -1061,8 +871,7 @@ Settings screen should support:
 - Future entry rules
 - Maximum hours per day
 - Minimum hours per entry
-- Approval required on/off
-- Direct approve entries on/off
+- Timer inactivity limit, default 10 seconds
 - Restrict employees to assigned tasks
 - Database location display
 - Backup location
@@ -1214,8 +1023,7 @@ Rules:
 - Show friendly error dialogs.
 - Write technical details to log files.
 - Never expose password hashes in logs.
-- Record failed login attempts.
-- Record export failures with destination path.
+- Record save failures with enough context to debug.
 - Record database migration errors.
 
 ---
@@ -1224,16 +1032,13 @@ Rules:
 
 ### Unit Tests
 
-- Employee can create own timesheet.
-- Employee cannot create timesheet for another employee.
-- Manager can view team timesheets.
-- HR Admin can view all timesheets.
-- Approved timesheet cannot be edited by employee.
+- User can create a timesheet.
+- Start time and end time are stored.
+- Short timer-driven entries can be saved.
 - Task progress updates after timesheet creation.
 - Task progress updates after timesheet update.
 - Task progress updates after timesheet deletion.
-- Grouped list totals are correct.
-- Export data contains correct rows.
+- All Timesheets returns saved rows.
 
 ### Validation Tests
 
@@ -1241,18 +1046,16 @@ Rules:
 - Hours spent cannot exceed daily limit.
 - Task must belong to selected project.
 - Employee must be active.
-- Employee cannot submit time during full-day leave if leave integration exists.
-- Locked date cannot be edited if payroll lock exists.
 
 ### UI Smoke Tests
 
 - App launches.
-- Login screen appears.
-- Dashboard opens after login.
-- Timesheet list loads.
-- New timesheet dialog validates required fields.
-- Project task detail opens.
-- Export dialog saves a file.
+- All Timesheets tab loads.
+- Create New tab loads.
+- Run button starts the timer.
+- Stop button stops the timer.
+- Timer auto-stops after 10 seconds of keyboard/mouse inactivity.
+- Save Timesheet writes the entry.
 
 ---
 
@@ -1261,55 +1064,37 @@ Rules:
 ### Phase 1 - Desktop Foundation
 
 - Create Python project structure
-- Add PySide6 main window
+- Add desktop main window
 - Add local SQLite database
-- Add first-run setup wizard
-- Add local login
-- Add roles and permissions seed data
+- Add seed employees, projects, and tasks
 
 ### Phase 2 - Basic Timesheet CRUD
 
 - Create employees, projects, tasks, and timesheets tables
 - Create models and repositories
-- Create timesheet list page
-- Create add/edit forms
+- Create All Timesheets page
+- Create New Timesheet form
 - Add employee/project/task selectors
 - Add validation
 
-### Phase 3 - Task Timesheet Tab
+### Phase 3 - Work Timer
 
-- Add project task detail screen
-- Add timesheet tab
-- Show planned hours
-- Show spent, remaining, extra, and progress
-- Add inline timesheet rows
-- Recalculate task progress
+- Add Run button
+- Add Stop button
+- Track elapsed seconds
+- Fill start time and end time
+- Fill hours spent from elapsed time
+- Add notes
+- Add action log
+- Auto-stop after 10 seconds of keyboard/mouse inactivity
 
-### Phase 4 - Filters and Grouping
+### Phase 4 - Polish
 
-- Add search
-- Add filters
-- Add group by employee/project/task/date/status
-- Add group totals
-- Add saved favorites
+- Improve layout
+- Add friendly validation messages
+- Add optional basic filters
 
-### Phase 5 - Approval Workflow
-
-- Add statuses
-- Add submit, approve, reject actions
-- Add status logs
-- Lock approved records for employees
-
-### Phase 6 - Reports and Export
-
-- Employee report
-- Project report
-- Task report
-- CSV export
-- XLSX export
-- PDF summary export
-
-### Phase 7 - Packaging
+### Phase 5 - Packaging
 
 - Add app icon
 - Add PyInstaller spec
@@ -1317,7 +1102,7 @@ Rules:
 - Test packaged app on a clean Windows machine
 - Add optional installer
 
-### Phase 8 - Backup and Restore
+### Phase 6 - Backup and Restore
 
 - Manual backup
 - Manual restore
@@ -1333,15 +1118,16 @@ The application is complete when:
 - The app runs as a Windows desktop `.exe`.
 - The app does not require Laravel, PHP, Apache/Nginx, or a browser.
 - First launch creates or connects to a writable SQLite database.
-- Users can log in locally.
-- Users can add timesheets against project tasks.
-- Managers can view employee time grouped by employee.
-- Task detail shows planned hours, spent hours, remaining hours, extra hours, and progress.
-- All Timesheets page supports search, filter, group by, and export.
-- Access is controlled by role and permission.
-- Approved records are protected.
-- Reports show correct total hours.
-- CSV/XLSX/PDF exports work from the desktop app.
+- The app opens without login.
+- There is no admin interface.
+- User can view one All Timesheets page.
+- User can open one Create New page.
+- User can add timesheets against project tasks.
+- User can enter employee, date, project, task, start time, end time, hours spent, billable, and description.
+- User can press Run to start the timer.
+- User can press Stop to stop the timer.
+- Timer automatically stops after 10 seconds of no keyboard or mouse activity.
+- Saved timesheets appear on the All Timesheets page.
 - The packaged executable can run on a clean Windows machine.
 
 ---
@@ -1353,7 +1139,7 @@ When working on this application:
 1. Build this as a standalone Python desktop app, not a Laravel module.
 2. Do not require a web server for core functionality.
 3. Keep attendance and timesheet data separate.
-4. Use approved timesheets for payroll and billing reports.
+4. Do not add payroll, approval, manager review, or admin flows unless requested later.
 5. Use task planned hours for progress.
 6. Always recalculate task totals after insert, update, or delete.
 7. Keep important changes in audit logs.
@@ -1399,6 +1185,6 @@ pip install PySide6 SQLAlchemy alembic pandas openpyxl reportlab pytest pyinstal
 
 ## 28. Final Notes
 
-This Timesheet Desktop application is project and task focused. It should help managers track time spent, progress, remaining effort, and extra effort. It should also help payroll and HR use approved hours when needed.
+This Timesheet Desktop application is project and task focused. It should help a user record time spent against employees, projects, and tasks with as little friction as possible.
 
 The first build should stay simple, offline, and reliable. Advanced billing, invoice generation, shared database deployment, cloud sync, and detailed analytics can be added later.
