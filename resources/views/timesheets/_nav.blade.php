@@ -1,7 +1,7 @@
 <nav class="odoo-purple-nav timesheet-nav">
     <a href="{{ route('timesheets.index') }}" class="odoo-app-switcher"><i class="bi bi-grid-3x3-gap-fill"></i></a>
     <a href="{{ route('timesheets.index') }}" class="odoo-module-title">Timesheets</a>
-    <a href="{{ route('timesheets.index') }}" @class(['active' => request()->routeIs('timesheets.index') || request()->routeIs('timesheets.show') || request()->routeIs('timesheets.create') || request()->routeIs('timesheets.edit')])>All Timesheets</a>
+    <a href="{{ route('timesheets.index') }}" @class(['active' => request()->routeIs('timesheets.index') || request()->routeIs('timesheets.show') || request()->routeIs('timesheets.edit')])>All Timesheets</a>
     <a href="{{ route('timesheets.reports.employee') }}" @class(['active' => request()->routeIs('timesheets.reports.*')])>Reporting</a>
     <a href="{{ route('timesheets.settings.edit') }}" @class(['active' => request()->routeIs('timesheets.settings.*')])>Configuration</a>
 </nav>

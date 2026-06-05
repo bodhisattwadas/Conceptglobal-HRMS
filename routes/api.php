@@ -9,5 +9,5 @@ Route::prefix('desktop')->name('api.desktop.')->group(function (): void {
     Route::get('/bootstrap', [DesktopTimesheetController::class, 'bootstrap'])->name('bootstrap');
     Route::get('/timesheets', [DesktopTimesheetController::class, 'timesheets'])->name('timesheets.index');
     Route::post('/timesheets', [DesktopTimesheetController::class, 'storeTimesheet'])->name('timesheets.store');
+    Route::delete('/timesheets/{timesheet}', [DesktopTimesheetController::class, 'deleteTimesheet'])->name('timesheets.destroy');
 });
-

@@ -34,6 +34,8 @@ use Illuminate\Support\Facades\Schema;
     'rejection_reason',
     'source',
     'desktop_uuid',
+    'desktop_submitted_machine_ip',
+    'desktop_submitted_machine_mac',
 ])]
 class Timesheet extends Model
 {

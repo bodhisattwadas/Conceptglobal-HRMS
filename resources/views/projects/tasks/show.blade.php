@@ -5,7 +5,6 @@
 <div class="timesheet-page">
     <div class="timesheet-title">Projects / {{ $task->project?->name }} / {{ $task->title }}</div>
     <div class="px-3 pb-2 d-flex gap-2 align-items-center">
-        <a href="{{ route('timesheets.create', ['project_id' => $task->project_id, 'project_task_id' => $task->id]) }}" class="btn btn-oh btn-sm">Add Timesheet</a>
         <span class="ms-auto ts-badge ts-submitted">{{ ucfirst(str_replace('_', ' ', $task->status)) }}</span>
     </div>
     <section class="timesheet-sheet">

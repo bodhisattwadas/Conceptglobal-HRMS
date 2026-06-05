@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import socket
 from typing import Any
+import uuid
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -26,7 +28,7 @@ class LaravelTimesheetApi:
         response = self._request(
             "POST",
             "/api/desktop/login",
-            {"email": email, "password": password},
+            {"email": email, "password": password, "machine": machine_identity()},
             authenticated=False,
         )
         self.session = ApiSession(token=response["token"], user=response["user"])
@@ -39,7 +41,11 @@ class LaravelTimesheetApi:
         return self._request("GET", "/api/desktop/timesheets").get("timesheets", [])
 
     def create_timesheet(self, payload: dict[str, Any]) -> dict[str, Any]:
+        payload = {**payload, "machine": machine_identity()}
         return self._request("POST", "/api/desktop/timesheets", payload).get("timesheet", {})
+
+    def delete_timesheet(self, timesheet_id: int) -> None:
+        self._request("DELETE", f"/api/desktop/timesheets/{timesheet_id}")
 
     def _request(
         self,
@@ -79,3 +85,30 @@ class LaravelTimesheetApi:
         except URLError as exc:
             raise ApiError(f"Could not connect to Laravel API: {exc.reason}") from exc
 
+
+def machine_identity() -> dict[str, str | None]:
+    return {
+        "ip": local_ip_address(),
+        "mac": local_mac_address(),
+    }
+
+
+def local_ip_address() -> str | None:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        sock.connect(("8.8.8.8", 80))
+        return sock.getsockname()[0]
+    except OSError:
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except OSError:
+            return None
+    finally:
+        sock.close()
+
+
+def local_mac_address() -> str | None:
+    node = uuid.getnode()
+    if (node >> 40) % 2:
+        return None
+    return ":".join(f"{(node >> shift) & 0xFF:02X}" for shift in range(40, -1, -8))

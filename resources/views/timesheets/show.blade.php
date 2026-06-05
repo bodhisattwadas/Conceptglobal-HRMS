@@ -41,6 +41,8 @@
             </div>
             <div class="timesheet-field"><label>Billable</label><div>{{ $timesheet->is_billable ? 'Yes' : 'No' }}</div></div>
             <div class="timesheet-field"><label>Source</label><div>{{ ucfirst(str_replace('_', ' ', $timesheet->source)) }}</div></div>
+            <div class="timesheet-field"><label>Submitted Machine IP</label><div>{{ $timesheet->desktop_submitted_machine_ip ?: '-' }}</div></div>
+            <div class="timesheet-field"><label>Submitted Machine MAC</label><div>{{ $timesheet->desktop_submitted_machine_mac ?: '-' }}</div></div>
         </div>
 
         <h5 class="mt-4">Work Timer Log</h5>
@@ -61,7 +63,7 @@
             </tbody>
         </table>
 
-        <h5 class="mt-4">Status Log</h5>
+        <h5 id="status-log" class="mt-4">Status Log</h5>
         <table class="timesheet-table">
             <thead><tr><th>Changed At</th><th>From</th><th>To</th><th>Reason</th></tr></thead>
             <tbody>

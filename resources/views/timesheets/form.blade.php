@@ -1,12 +1,12 @@
-@extends('layouts.app', ['heading' => 'Timesheets', 'subheading' => $timesheet ? 'Edit Timesheet' : 'New Timesheet'])
+@extends('layouts.app', ['heading' => 'Timesheets', 'subheading' => 'Edit Timesheet'])
 
 @section('content')
 @include('timesheets._nav')
 <div class="timesheet-page">
-    <div class="timesheet-title">{{ $timesheet ? 'Timesheets / '.$timesheet->employee?->full_name : 'Timesheets / New' }}</div>
-    <form method="post" action="{{ $timesheet ? route('timesheets.update', $timesheet) : route('timesheets.store') }}">
+    <div class="timesheet-title">Timesheets / {{ $timesheet->employee?->full_name }}</div>
+    <form method="post" action="{{ route('timesheets.update', $timesheet) }}">
         @csrf
-        @if($timesheet) @method('PUT') @endif
+        @method('PUT')
         <input type="hidden" name="timer_elapsed_seconds" id="timesheet_timer_elapsed_seconds" value="{{ old('timer_elapsed_seconds', $timesheet?->timer_elapsed_seconds ?? 0) }}">
         <input type="hidden" name="timer_logs" id="timesheet_timer_logs" value="{{ old('timer_logs', json_encode($timesheet?->timer_logs ?? [])) }}">
         <div class="px-3 pb-2 d-flex gap-2">

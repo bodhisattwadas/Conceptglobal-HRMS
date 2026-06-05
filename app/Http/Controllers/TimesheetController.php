@@ -54,31 +54,6 @@ class TimesheetController extends Controller
         ]);
     }
 
-    public function create(): View
-    {
-        return view('timesheets.form', $this->formData(null));
-    }
-
-    public function store(Request $request, TimesheetProgressService $progress): RedirectResponse
-    {
-        $data = $this->validateTimesheet($request);
-        $employee = Employee::with('workInformation')->findOrFail($data['employee_id']);
-        $task = ProjectTask::findOrFail($data['project_task_id']);
-
-        $timesheet = Timesheet::create($data + [
-            'company_id' => $task->company_id,
-            'department_id' => $employee->workInformation?->department_id,
-            'status' => $request->input('save_action') === 'submit' ? 'submitted' : 'draft',
-            'submitted_at' => $request->input('save_action') === 'submit' ? now() : null,
-            'submitted_by' => auth()->id(),
-        ]);
-
-        $this->logStatus($timesheet, null, $timesheet->status);
-        $progress->recalculateTask($task);
-
-        return redirect()->route('timesheets.show', $timesheet)->with('status', 'Timesheet created.');
-    }
-
     public function show(Timesheet $timesheet): View
     {
         abort_unless($timesheet->source === 'desktop' && filled($timesheet->desktop_uuid), 404);

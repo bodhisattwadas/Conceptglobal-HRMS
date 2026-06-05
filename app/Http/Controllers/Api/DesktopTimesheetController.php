@@ -26,6 +26,8 @@ class DesktopTimesheetController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            'machine.ip' => ['nullable', 'string', 'max:45'],
+            'machine.mac' => ['nullable', 'string', 'max:17'],
         ]);
 
         $user = User::query()->where('email', $credentials['email'])->first();
@@ -46,6 +48,8 @@ class DesktopTimesheetController extends Controller
         $user->forceFill([
             'desktop_api_token_hash' => hash('sha256', $token),
             'desktop_api_token_last_used_at' => now(),
+            'desktop_last_login_machine_ip' => $credentials['machine']['ip'] ?? null,
+            'desktop_last_login_machine_mac' => $credentials['machine']['mac'] ?? null,
         ])->save();
 
         return response()->json([
@@ -111,6 +115,7 @@ class DesktopTimesheetController extends Controller
         [, $employee] = $this->authenticatedEmployee($request);
 
         $data = $request->validate([
+            'id' => ['nullable', 'integer', 'exists:timesheets,id'],
             'desktop_uuid' => ['nullable', 'uuid'],
             'project_id' => ['required', 'exists:projects,id'],
             'project_task_id' => ['required', 'exists:project_tasks,id'],
@@ -128,6 +133,9 @@ class DesktopTimesheetController extends Controller
             'description' => ['nullable', 'string', 'max:2000'],
             'is_billable' => ['nullable', 'boolean'],
             'submit_final' => ['nullable', 'boolean'],
+            'status' => ['nullable', 'string', 'in:draft,running'],
+            'machine.ip' => ['nullable', 'string', 'max:45'],
+            'machine.mac' => ['nullable', 'string', 'max:17'],
         ]);
 
         $task = ProjectTask::query()
@@ -139,6 +147,46 @@ class DesktopTimesheetController extends Controller
             throw ValidationException::withMessages([
                 'project_task_id' => 'Selected task does not belong to selected project.',
             ]);
+        }
+
+        $desktopUuid = $data['desktop_uuid'] ?? null;
+        $existingTimesheet = null;
+
+        if ($desktopUuid) {
+            $existingTimesheet = Timesheet::query()
+                ->where('desktop_uuid', $desktopUuid)
+                ->first();
+        }
+
+        if (! $existingTimesheet && isset($data['id'])) {
+            $existingTimesheet = Timesheet::query()->find($data['id']);
+        }
+
+        if ($existingTimesheet && $existingTimesheet->employee_id !== $employee->id) {
+            abort(403, 'This desktop timesheet belongs to another employee.');
+        }
+
+        if ($existingTimesheet && ! in_array($existingTimesheet->status, ['draft', 'running'], true)) {
+            abort(409, 'Final submitted timesheets cannot be changed from the desktop app.');
+        }
+
+        $isFinalSubmit = $data['submit_final'] ?? false;
+        $status = $isFinalSubmit ? 'submitted' : ($data['status'] ?? 'draft');
+        $desktopUuid ??= $existingTimesheet?->desktop_uuid ?? (string) Str::uuid();
+        $oldTask = $existingTimesheet?->task;
+
+        if ($status === 'running') {
+            $runningQuery = Timesheet::query()
+                ->where('employee_id', $employee->id)
+                ->where('status', 'running');
+
+            if ($existingTimesheet) {
+                $runningQuery->whereKeyNot($existingTimesheet->id);
+            }
+
+            if ($runningQuery->exists()) {
+                abort(409, 'Stop the currently running timesheet before starting another one.');
+            }
         }
 
         $payload = [
@@ -155,22 +203,54 @@ class DesktopTimesheetController extends Controller
             'timer_logs' => $data['timer_logs'] ?? [],
             'description' => $data['description'] ?? null,
             'is_billable' => $data['is_billable'] ?? true,
-            'status' => ($data['submit_final'] ?? false) ? 'submitted' : 'draft',
-            'submitted_at' => ($data['submit_final'] ?? false) ? now() : null,
-            'submitted_by' => ($data['submit_final'] ?? false) ? $employee->user_id : null,
+            'status' => $status,
+            'submitted_at' => $isFinalSubmit ? now() : null,
+            'submitted_by' => $isFinalSubmit ? $employee->user_id : null,
             'source' => 'desktop',
+            'desktop_uuid' => $desktopUuid,
+            'desktop_submitted_machine_ip' => $isFinalSubmit ? ($data['machine']['ip'] ?? null) : $existingTimesheet?->desktop_submitted_machine_ip,
+            'desktop_submitted_machine_mac' => $isFinalSubmit ? ($data['machine']['mac'] ?? null) : $existingTimesheet?->desktop_submitted_machine_mac,
         ];
 
-        $timesheet = Timesheet::query()->updateOrCreate(
-            ['desktop_uuid' => $data['desktop_uuid'] ?? (string) Str::uuid()],
-            $payload,
-        );
+        if ($existingTimesheet) {
+            $existingTimesheet->update($payload);
+            $timesheet = $existingTimesheet->refresh();
+        } else {
+            $timesheet = Timesheet::query()->create($payload);
+        }
 
         $progress->recalculateTask($task);
+        if ($oldTask && $oldTask->id !== $task->id) {
+            $progress->recalculateTask($oldTask);
+        }
 
         return response()->json([
             'timesheet' => $this->timesheetPayload($timesheet->load('project', 'task')),
         ], $timesheet->wasRecentlyCreated ? 201 : 200);
+    }
+
+    public function deleteTimesheet(Request $request, Timesheet $timesheet, TimesheetProgressService $progress): JsonResponse
+    {
+        [, $employee] = $this->authenticatedEmployee($request);
+
+        if ($timesheet->employee_id !== $employee->id) {
+            abort(403, 'This desktop timesheet belongs to another employee.');
+        }
+
+        if (! in_array($timesheet->status, ['draft', 'running'], true)) {
+            abort(409, 'Only draft or running timesheets can be deleted from the desktop app.');
+        }
+
+        $task = $timesheet->task;
+        $timesheet->forceDelete();
+
+        if ($task) {
+            $progress->recalculateTask($task);
+        }
+
+        return response()->json([
+            'message' => 'Timesheet deleted.',
+        ]);
     }
 
     private function authenticatedEmployee(Request $request): array
@@ -232,6 +312,8 @@ class DesktopTimesheetController extends Controller
             'is_billable' => (bool) $timesheet->is_billable,
             'status' => $timesheet->status,
             'source' => $timesheet->source,
+            'desktop_submitted_machine_ip' => $timesheet->desktop_submitted_machine_ip,
+            'desktop_submitted_machine_mac' => $timesheet->desktop_submitted_machine_mac,
             'web_url' => route('timesheets.show', $timesheet),
         ];
     }
@@ -258,7 +340,11 @@ class DesktopTimesheetController extends Controller
         abort_unless(
             Schema::hasColumn('users', 'desktop_api_token_hash')
                 && Schema::hasColumn('users', 'desktop_api_token_last_used_at')
-                && Schema::hasColumn('timesheets', 'desktop_uuid'),
+                && Schema::hasColumn('users', 'desktop_last_login_machine_ip')
+                && Schema::hasColumn('users', 'desktop_last_login_machine_mac')
+                && Schema::hasColumn('timesheets', 'desktop_uuid')
+                && Schema::hasColumn('timesheets', 'desktop_submitted_machine_ip')
+                && Schema::hasColumn('timesheets', 'desktop_submitted_machine_mac'),
             503,
             'Desktop API database migrations are not applied. Run php artisan migrate.'
         );

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import ctypes
 import sys
@@ -25,6 +25,14 @@ ACCENT_DARK = "#5F2D4E"
 TEAL_COLOR = "#0F766E"
 WARNING_COLOR = "#B42318"
 BORDER_COLOR = "#D0D5DD"
+STATUS_STYLES = {
+    "draft": ("Draft", "#7C3E66", "#FDF2FA"),
+    "running": ("Running", "#B54708", "#FFFAEB"),
+    "submitted": ("Submitted", "#175CD3", "#EFF8FF"),
+    "approved": ("Approved", "#027A48", "#ECFDF3"),
+    "rejected": ("Rejected", "#B42318", "#FEF3F2"),
+    "cancelled": ("Cancelled", "#475467", "#F2F4F7"),
+}
 
 
 class LASTINPUTINFO(ctypes.Structure):
@@ -53,7 +61,9 @@ class TimesheetDesktopApp:
         self.remote_user: dict | None = None
         self.remote_projects: list[dict] = []
         self.remote_timesheets: list[dict] = []
+        self.current_timesheet_id: int | None = None
         self.current_desktop_uuid: str | None = None
+        self.status_badge_images: dict[str, tk.PhotoImage] = {}
         self.user = CurrentUser(1, "User", "user@example.com", "Employee")
         self.lookup = LookupService(self.conn)
         self.timesheets = TimesheetService(self.conn)
@@ -83,6 +93,14 @@ class TimesheetDesktopApp:
         style.map("Accent.TButton", background=[("active", ACCENT_DARK), ("disabled", "#D6BBCD")])
         style.configure("Ghost.TButton", background="#F2F4F7", foreground=TEXT_COLOR, padding=(12, 8), borderwidth=0)
         style.map("Ghost.TButton", background=[("active", "#E4E7EC")])
+        style.configure("Refresh.TButton", background=TEAL_COLOR, foreground="white", padding=(12, 8), borderwidth=0)
+        style.map("Refresh.TButton", background=[("active", "#0B5F59")], foreground=[("active", "white")])
+        style.configure("Danger.TButton", background=WARNING_COLOR, foreground="white", padding=(12, 8), borderwidth=0)
+        style.map(
+            "Danger.TButton",
+            background=[("disabled", "#F2F4F7"), ("active", "#912018")],
+            foreground=[("disabled", "#98A2B3"), ("active", "white")],
+        )
         style.configure("Header.TLabel", background=BG_COLOR, foreground=TEXT_COLOR, font=("Segoe UI", 20, "bold"))
         style.configure("Subtle.TLabel", background=BG_COLOR, foreground=MUTED_COLOR)
         style.configure("SurfaceTitle.TLabel", background=SURFACE_COLOR, foreground=TEXT_COLOR, font=("Segoe UI", 13, "bold"))
@@ -191,7 +209,8 @@ class TimesheetDesktopApp:
         toolbar = ttk.Frame(self.all_frame, padding=16, style="Surface.TFrame")
         toolbar.pack(fill="x", pady=(0, 12))
         ttk.Label(toolbar, text="All Timesheets", style="SurfaceTitle.TLabel").pack(side="left")
-        ttk.Button(toolbar, text="Refresh", style="Ghost.TButton", command=self._refresh_remote_timesheets).pack(side="right")
+        self.refresh_button = ttk.Button(toolbar, text="⟳ Refresh", style="Refresh.TButton", command=self._refresh_remote_timesheets)
+        self.refresh_button.pack(side="right")
         self._metric(toolbar, "Entries", str(len(rows))).pack(side="right", padx=(0, 16))
         self._metric(toolbar, "Billable", str(billable_count)).pack(side="right", padx=(0, 10))
         self._metric(toolbar, "Total Hours", f"{total_hours:g}").pack(side="right", padx=(0, 10))
@@ -210,7 +229,9 @@ class TimesheetDesktopApp:
 
     def _timesheet_tree(self, parent: ttk.Frame, rows) -> ttk.Treeview:
         columns = ("date", "employee", "project", "task", "start", "end", "hours", "billable", "description")
-        tree = ttk.Treeview(parent, columns=columns, show="headings")
+        tree = ttk.Treeview(parent, columns=columns, show=("tree", "headings"))
+        tree.heading("#0", text="Status", anchor="center")
+        tree.column("#0", width=130, anchor="center", stretch=False)
         headings = {
             "date": "Date",
             "employee": "Employee",
@@ -233,15 +254,20 @@ class TimesheetDesktopApp:
             "billable": 80,
             "description": 260,
         }
+        self._ensure_status_badge_images()
         for key, label in headings.items():
             tree.heading(key, text=label, anchor="center")
             tree.column(key, width=widths[key], anchor="center")
         for row in rows:
-            tag = "even" if len(tree.get_children()) % 2 == 0 else "odd"
+            stripe_tag = "even" if len(tree.get_children()) % 2 == 0 else "odd"
+            status = self._status_key(row)
+            status_label, _status_fg, _status_bg = self._status_style(status)
             tree.insert(
                 "",
                 "end",
                 iid=str(row.get("desktop_uuid") or row.get("id")),
+                text=f" {status_label}",
+                image=self.status_badge_images.get(status) or self.status_badge_images["unknown"],
                 values=(
                     row["date"],
                     self._row_employee_name(row),
@@ -253,10 +279,13 @@ class TimesheetDesktopApp:
                     "Yes" if row.get("is_billable") else "No",
                     row.get("description") or "",
                 ),
-                tags=(tag,),
+                tags=(stripe_tag, f"status-{status}"),
             )
         tree.tag_configure("even", background=SURFACE_COLOR)
         tree.tag_configure("odd", background="#F8FAFC")
+        for status in [*STATUS_STYLES, "unknown"]:
+            _label, color, _background = self._status_style(status)
+            tree.tag_configure(f"status-{status}", foreground=color)
         return tree
 
     def _build_create_new(self) -> None:
@@ -304,6 +333,7 @@ class TimesheetDesktopApp:
         self.timer_text_var = tk.StringVar(value="00:00:00")
         self.timer_status_var = tk.StringVar(value="Stopped")
         self.timer_total_var = tk.StringVar(value="Total Time Spent: 0 hr 0 min 0 sec")
+        self.current_timesheet_id = None
         self.current_desktop_uuid = None
 
         form = ttk.Frame(scroll_content, padding=18, style="Surface.TFrame")
@@ -330,9 +360,11 @@ class TimesheetDesktopApp:
 
         actions = ttk.Frame(scroll_content, style="App.TFrame")
         actions.pack(fill="x", pady=(12, 0))
-        ttk.Button(actions, text="Clear", style="Ghost.TButton", command=self._clear_form).pack(side="right")
+        self.delete_button = ttk.Button(actions, text="Delete", style="Danger.TButton", command=self._delete_current_timesheet)
+        self.delete_button.pack(side="right")
         ttk.Button(actions, text="Save and Submit Final", style="Accent.TButton", command=lambda: self._save_timesheet(submit_final=True)).pack(side="right", padx=(0, 8))
         ttk.Button(actions, text="Save Draft", style="Ghost.TButton", command=lambda: self._save_timesheet(submit_final=False)).pack(side="right", padx=(0, 8))
+        self._set_delete_button_state()
 
         self.project_var.trace_add("write", self._load_tasks)
         self._load_tasks()
@@ -391,6 +423,13 @@ class TimesheetDesktopApp:
     def _start_timer(self) -> None:
         if self.timer_running:
             return
+        running_row = self._other_running_timesheet()
+        if running_row:
+            messagebox.showerror(
+                "Run Timer",
+                "Another timesheet is already running. Stop it before starting a new one.",
+            )
+            return
         self.timer_running = True
         self.timer_started_at = time.monotonic()
         self.current_elapsed_seconds = 0
@@ -404,6 +443,7 @@ class TimesheetDesktopApp:
         self._refresh_timer_labels()
         self._sync_hours_from_timer()
         self._add_action("Started", self.current_elapsed_seconds)
+        self._persist_timer_status("running")
         self._tick_timer()
 
     def _stop_timer_by_button(self) -> None:
@@ -425,6 +465,7 @@ class TimesheetDesktopApp:
         self._sync_hours_from_timer()
         self._add_action(reason, self.current_elapsed_seconds)
         self.current_elapsed_seconds = 0
+        self._persist_timer_status("draft")
 
     def _tick_timer(self) -> None:
         if not self.timer_running or self.timer_started_at is None:
@@ -493,13 +534,62 @@ class TimesheetDesktopApp:
                 pass
         raise ValueError("Date must be dd/mm/yyyy.")
 
+    def _persist_timer_status(self, status: str) -> None:
+        try:
+            hours = self._hours_for_payload()
+            description = self.description.get("1.0", "end").strip()
+            desktop_uuid = self.current_desktop_uuid or str(uuid.uuid4())
+            saved_timesheet = self.api.create_timesheet(
+                {
+                    "id": self.current_timesheet_id,
+                    "desktop_uuid": desktop_uuid,
+                    "project_id": self.project_map[self.project_var.get()],
+                    "project_task_id": self.task_map[self.task_var.get()],
+                    "date": self._parse_date().isoformat(),
+                    "start_time": None if self.start_time_var.get().startswith("--") else self.start_time_var.get(),
+                    "end_time": None if self.end_time_var.get().startswith("--") else self.end_time_var.get(),
+                    "hours_spent": float(hours),
+                    "timer_elapsed_seconds": self.total_elapsed_seconds + (self.current_elapsed_seconds if self.timer_running else 0),
+                    "timer_logs": self._timer_logs_payload(),
+                    "description": description,
+                    "is_billable": self.billable_var.get() == "Yes",
+                    "submit_final": False,
+                    "status": status,
+                }
+            )
+        except (KeyError, ValueError, InvalidOperation, ApiError) as exc:
+            messagebox.showerror("Timer Sync", str(exc))
+            return
+
+        self.current_timesheet_id = saved_timesheet.get("id") or self.current_timesheet_id
+        self.current_desktop_uuid = saved_timesheet.get("desktop_uuid") or desktop_uuid
+        self.form_title_var.set("Resume Running Timesheet" if status == "running" else "Resume Draft Timesheet")
+        self._set_delete_button_state()
+        self._refresh_remote_timesheets()
+
+    def _hours_for_payload(self) -> Decimal:
+        total = self.total_elapsed_seconds + (self.current_elapsed_seconds if self.timer_running else 0)
+        if total > 0:
+            return (Decimal(total) / Decimal(3600)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+        if self.timer_running:
+            return Decimal("0.0001")
+        try:
+            entered_hours = Decimal(self.hours_var.get())
+            if entered_hours > 0:
+                return entered_hours
+        except InvalidOperation:
+            pass
+        return Decimal("0.0001")
+
     def _save_timesheet(self, *, submit_final: bool) -> None:
         try:
-            hours = Decimal(self.hours_var.get())
+            hours = self._hours_for_payload()
             description = self.description.get("1.0", "end").strip()
-            self.api.create_timesheet(
+            desktop_uuid = self.current_desktop_uuid or str(uuid.uuid4())
+            saved_timesheet = self.api.create_timesheet(
                 {
-                    "desktop_uuid": self.current_desktop_uuid or str(uuid.uuid4()),
+                    "id": self.current_timesheet_id,
+                    "desktop_uuid": desktop_uuid,
                     "project_id": self.project_map[self.project_var.get()],
                     "project_task_id": self.task_map[self.task_var.get()],
                     "date": self._parse_date().isoformat(),
@@ -511,15 +601,52 @@ class TimesheetDesktopApp:
                     "description": description,
                     "is_billable": self.billable_var.get() == "Yes",
                     "submit_final": submit_final,
+                    "status": "draft",
                 }
             )
         except (KeyError, ValueError, InvalidOperation, ApiError) as exc:
             messagebox.showerror("Save Timesheet", str(exc))
             return
+        self._refresh_remote_timesheets()
         self._add_action("Submitted Final" if submit_final else "Saved Draft")
         messagebox.showinfo("Save Timesheet", "Timesheet submitted as final." if submit_final else "Timesheet saved as draft.")
+        if submit_final:
+            self._clear_form()
+            self.notebook.select(self.all_frame)
+            return
+
+        self.current_timesheet_id = saved_timesheet.get("id") or self.current_timesheet_id
+        self.current_desktop_uuid = saved_timesheet.get("desktop_uuid") or desktop_uuid
+        self.form_title_var.set("Resume Draft Timesheet")
+        self._set_delete_button_state()
+        self._refresh_timer_labels()
+
+    def _delete_current_timesheet(self) -> None:
+        if not self.current_timesheet_id:
+            messagebox.showinfo("Delete Timesheet", "Load a draft timesheet before deleting.")
+            return
+
+        confirmed = messagebox.askyesno(
+            "Delete Timesheet",
+            "This will permanently delete this draft timesheet. This action cannot be undone.\n\nDo you want to continue?",
+            icon="warning",
+        )
+        if not confirmed:
+            return
+
+        if self.timer_running:
+            self._stop_timer_by_button()
+
+        try:
+            self.api.delete_timesheet(int(self.current_timesheet_id))
+        except ApiError as exc:
+            messagebox.showerror("Delete Timesheet", str(exc))
+            return
+
+        messagebox.showinfo("Delete Timesheet", "Timesheet deleted.")
         self._refresh_remote_timesheets()
         self._clear_form()
+        self.notebook.select(self.all_frame)
 
     def _timer_logs_payload(self, *, save_action: str | None = None) -> list[dict]:
         logs = []
@@ -539,9 +666,14 @@ class TimesheetDesktopApp:
         return logs
 
     def _refresh_remote_timesheets(self) -> None:
+        if hasattr(self, "refresh_button"):
+            self.refresh_button.configure(text="↻ Syncing...", state="disabled")
+            self.root.update_idletasks()
         try:
             self.remote_timesheets = self.api.timesheets()
         except ApiError as exc:
+            if hasattr(self, "refresh_button"):
+                self.refresh_button.configure(text="⟳ Refresh", state="normal")
             messagebox.showerror("Refresh failed", str(exc))
             return
         self._build_all_timesheets()
@@ -554,17 +686,26 @@ class TimesheetDesktopApp:
         row = next((item for item in self.remote_timesheets if str(item.get("desktop_uuid") or item.get("id")) == desktop_uuid), None)
         if not row:
             return
-        if row.get("status") != "draft":
+        if row.get("status") in {"submitted", "approved"}:
+            self._show_readonly_timesheet(row)
+            return
+        if row.get("status") not in {"draft", "running"}:
             if notify:
-                messagebox.showinfo("Timesheet", "Only draft timesheets can be resumed.")
+                messagebox.showinfo("Timesheet", "Only draft or running timesheets can be resumed.")
+            return
+        if self.timer_running and self._is_current_timesheet(row):
+            self.notebook.select(self.create_frame)
             return
         self._load_draft_into_form(row)
 
     def _load_draft_into_form(self, row: dict) -> None:
         if self.timer_running:
             self._stop_timer_by_button()
+        self.current_timesheet_id = row.get("id")
         self.current_desktop_uuid = row.get("desktop_uuid")
-        self.form_title_var.set("Resume Draft Timesheet")
+        is_running = row.get("status") == "running"
+        self.form_title_var.set("Resume Running Timesheet" if is_running else "Resume Draft Timesheet")
+        self._set_delete_button_state()
         self.notebook.select(self.create_frame)
         self.date_var.set(self._display_date(row.get("date")))
         project_name = self._row_project_name(row)
@@ -583,10 +724,9 @@ class TimesheetDesktopApp:
         self.description.insert("1.0", row.get("description") or "")
         self.total_elapsed_seconds = int(row.get("timer_elapsed_seconds") or 0)
         self.current_elapsed_seconds = 0
-        self._refresh_timer_labels()
-        self._set_timer_buttons(running=False)
-        for item in self.action_tree.get_children():
-            self.action_tree.delete(item)
+        self.timer_running = False
+        self.timer_started_at = None
+        self._clear_action_logs()
         for log in row.get("timer_logs") or []:
             tag = "even" if len(self.action_tree.get_children()) % 2 == 0 else "odd"
             self.action_tree.insert(
@@ -603,6 +743,155 @@ class TimesheetDesktopApp:
             )
         self.action_tree.tag_configure("even", background=SURFACE_COLOR)
         self.action_tree.tag_configure("odd", background="#F8FAFC")
+        if is_running:
+            self._resume_running_timer(row)
+        else:
+            self.timer_status_var.set("Stopped")
+            self._set_timer_buttons(running=False)
+            self._refresh_timer_labels()
+
+    def _is_current_timesheet(self, row: dict) -> bool:
+        row_id = row.get("id")
+        row_uuid = row.get("desktop_uuid")
+        return (row_id is not None and row_id == self.current_timesheet_id) or (
+            row_uuid is not None and row_uuid == self.current_desktop_uuid
+        )
+
+    def _resume_running_timer(self, row: dict) -> None:
+        elapsed_since_start = self._running_elapsed_seconds(row.get("timer_logs") or [])
+        self.current_elapsed_seconds = elapsed_since_start
+        self.timer_started_at = time.monotonic() - elapsed_since_start
+        self.timer_running = True
+        self.timer_status_var.set("Running")
+        self.end_time_var.set("--:-- --")
+        self._set_timer_buttons(running=True)
+        self._mark_active()
+        self._refresh_timer_labels()
+        self._sync_hours_from_timer()
+        self._tick_timer()
+
+    def _running_elapsed_seconds(self, logs: list[dict]) -> int:
+        latest_started_at: datetime | None = None
+        for log in logs:
+            if log.get("action") != "Started":
+                continue
+            logged_at = log.get("time")
+            if not logged_at:
+                continue
+            try:
+                parsed = datetime.strptime(logged_at, "%d/%m/%Y %I:%M:%S %p")
+            except ValueError:
+                continue
+            if latest_started_at is None or parsed > latest_started_at:
+                latest_started_at = parsed
+
+        if latest_started_at is None:
+            return 0
+
+        return max(0, int((datetime.now() - latest_started_at).total_seconds()))
+
+    def _other_running_timesheet(self) -> dict | None:
+        for row in self.remote_timesheets:
+            if row.get("status") != "running":
+                continue
+            if not self._is_current_timesheet(row):
+                return row
+        return None
+
+    def _show_readonly_timesheet(self, row: dict) -> None:
+        window = tk.Toplevel(self.root)
+        window.title("Timesheet Details")
+        window.geometry("760x560")
+        window.minsize(680, 480)
+        window.configure(bg=BG_COLOR)
+        window.transient(self.root)
+
+        wrapper = ttk.Frame(window, padding=18, style="App.TFrame")
+        wrapper.pack(fill="both", expand=True)
+
+        header = ttk.Frame(wrapper, padding=16, style="Surface.TFrame")
+        header.pack(fill="x", pady=(0, 12))
+        ttk.Label(header, text="Timesheet Details", style="SurfaceTitle.TLabel").pack(side="left")
+        status = self._status_key(row)
+        status_label, status_color, status_background = self._status_style(status)
+        tk.Label(
+            header,
+            text=status_label,
+            bg=status_background,
+            fg=status_color,
+            padx=12,
+            pady=5,
+            font=("Segoe UI", 9, "bold"),
+        ).pack(side="right")
+
+        details = ttk.Frame(wrapper, padding=16, style="Surface.TFrame")
+        details.pack(fill="x", pady=(0, 12))
+        for column in range(4):
+            details.columnconfigure(column, weight=1)
+
+        seconds = int(row.get("timer_elapsed_seconds") or 0)
+        total_time = f"{int(seconds // 3600)} hr {int((seconds % 3600) // 60)} min {int(seconds % 60)} sec"
+        fields = [
+            ("Employee", self._row_employee_name(row)),
+            ("Date", self._display_date(row.get("date"))),
+            ("Project", self._row_project_name(row)),
+            ("Task", self._row_task_title(row)),
+            ("Start", self._display_time(row.get("start_time")) or "-"),
+            ("End", self._resolved_end_time(row)),
+            ("Hours", f'{float(row.get("hours_spent") or 0):g}'),
+            ("Total Time", total_time),
+            ("Billable", "Yes" if row.get("is_billable") else "No"),
+        ]
+        for index, (label, value) in enumerate(fields):
+            self._readonly_field(details, label, value, index // 2, (index % 2) * 2)
+
+        note_frame = ttk.Frame(wrapper, padding=16, style="Surface.TFrame")
+        note_frame.pack(fill="x", pady=(0, 12))
+        ttk.Label(note_frame, text="Description", style="Section.TLabel").pack(anchor="w")
+        tk.Label(
+            note_frame,
+            text=row.get("description") or "-",
+            bg=SURFACE_COLOR,
+            fg=TEXT_COLOR,
+            anchor="w",
+            justify="left",
+            wraplength=690,
+            font=("Segoe UI", 10),
+        ).pack(fill="x", pady=(6, 0))
+
+        logs_frame = ttk.Frame(wrapper, padding=16, style="Surface.TFrame")
+        logs_frame.pack(fill="both", expand=True)
+        ttk.Label(logs_frame, text="Work Timer Log", style="Section.TLabel").pack(anchor="w", pady=(0, 8))
+        log_tree = ttk.Treeview(logs_frame, columns=("action", "time", "elapsed", "total", "note"), show="headings", height=7)
+        for column, width in {"action": 130, "time": 170, "elapsed": 100, "total": 100, "note": 220}.items():
+            log_tree.heading(column, text=column.title(), anchor="center")
+            log_tree.column(column, width=width, anchor="center")
+        log_tree.pack(fill="both", expand=True)
+        for log in row.get("timer_logs") or []:
+            log_tree.insert(
+                "",
+                "end",
+                values=(
+                    log.get("action", ""),
+                    log.get("time", ""),
+                    log.get("elapsed", ""),
+                    log.get("total", ""),
+                    log.get("note", ""),
+                ),
+            )
+
+        ttk.Button(wrapper, text="Close", style="Ghost.TButton", command=window.destroy).pack(anchor="e", pady=(12, 0))
+
+    def _readonly_field(self, parent: ttk.Frame, label: str, value: str, row: int, column: int) -> None:
+        ttk.Label(parent, text=label, style="Section.TLabel").grid(row=row * 2, column=column, sticky="w", padx=(0, 12), pady=(0, 3))
+        tk.Label(
+            parent,
+            text=value or "-",
+            bg=SURFACE_COLOR,
+            fg=TEXT_COLOR,
+            anchor="w",
+            font=("Segoe UI", 10),
+        ).grid(row=row * 2 + 1, column=column, columnspan=2, sticky="ew", padx=(0, 18), pady=(0, 10))
 
     def _display_date(self, value: str | None) -> str:
         if not value:
@@ -622,6 +911,44 @@ class TimesheetDesktopApp:
                 pass
         return value
 
+    def _resolved_end_time(self, row: dict) -> str:
+        existing = self._display_time(row.get("end_time"))
+        if existing:
+            return existing
+
+        latest_log_time = self._latest_timer_log_time(row.get("timer_logs") or [])
+        if latest_log_time:
+            return latest_log_time.strftime("%I:%M %p")
+
+        start_time = row.get("start_time")
+        seconds = int(row.get("timer_elapsed_seconds") or 0)
+        if not start_time or seconds <= 0:
+            return "-"
+
+        for fmt in ("%H:%M:%S", "%H:%M", "%I:%M %p"):
+            try:
+                started_at = datetime.strptime(start_time, fmt)
+                ended_at = started_at + timedelta(seconds=seconds)
+                return ended_at.strftime("%I:%M %p")
+            except ValueError:
+                pass
+
+        return "-"
+
+    def _latest_timer_log_time(self, logs: list[dict]) -> datetime | None:
+        latest: datetime | None = None
+        for log in logs:
+            logged_at = log.get("time")
+            if not logged_at:
+                continue
+            try:
+                parsed = datetime.strptime(logged_at, "%d/%m/%Y %I:%M:%S %p")
+            except ValueError:
+                continue
+            if latest is None or parsed > latest:
+                latest = parsed
+        return latest
+
     def _row_employee_name(self, row: dict) -> str:
         return self.remote_user.get("employee", {}).get("name", "") if self.remote_user else ""
 
@@ -637,13 +964,40 @@ class TimesheetDesktopApp:
             return task.get("title") or ""
         return str(task or "")
 
+    def _status_key(self, row: dict) -> str:
+        return str(row.get("status") or "unknown").strip().lower()
+
+    def _status_style(self, status: str) -> tuple[str, str, str]:
+        if status in STATUS_STYLES:
+            return STATUS_STYLES[status]
+        return (status.replace("_", " ").title() if status else "Unknown", MUTED_COLOR, "#F2F4F7")
+
+    def _ensure_status_badge_images(self) -> None:
+        if self.status_badge_images:
+            return
+        for status in [*STATUS_STYLES, "unknown"]:
+            _label, color, background = self._status_style(status)
+            image = tk.PhotoImage(width=22, height=14)
+            image.put(background, to=(0, 0, 22, 14))
+            image.put(color, to=(2, 2, 20, 12))
+            image.put(background, to=(0, 0, 2, 2))
+            image.put(background, to=(20, 0, 22, 2))
+            image.put(background, to=(0, 12, 2, 14))
+            image.put(background, to=(20, 12, 22, 14))
+            self.status_badge_images[status] = image
+
+    def _set_delete_button_state(self) -> None:
+        if hasattr(self, "delete_button"):
+            self.delete_button.configure(state="normal" if self.current_timesheet_id else "disabled")
+
     def _clear_form(self) -> None:
         if self.timer_running:
             self._stop_timer_by_button()
-        self._add_action("Cleared")
         self.date_var.set(date.today().strftime("%d/%m/%Y"))
+        self.current_timesheet_id = None
         self.current_desktop_uuid = None
         self.form_title_var.set("Create New Timesheet")
+        self._set_delete_button_state()
         self.start_time_var.set("--:-- --")
         self.end_time_var.set("--:-- --")
         self.hours_var.set("1.00")
@@ -656,3 +1010,8 @@ class TimesheetDesktopApp:
         self.timer_status_var.set("Stopped")
         self.timer_total_var.set("Total Time Spent: 0 hr 0 min 0 sec")
         self._set_timer_buttons(running=False)
+        self._clear_action_logs()
+
+    def _clear_action_logs(self) -> None:
+        for item in self.action_tree.get_children():
+            self.action_tree.delete(item)

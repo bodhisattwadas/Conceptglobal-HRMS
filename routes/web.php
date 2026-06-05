@@ -107,8 +107,6 @@ Route::prefix('payroll')->name('payroll.')->group(function (): void {
 
 Route::prefix('timesheets')->name('timesheets.')->group(function (): void {
     Route::get('/', [TimesheetController::class, 'index'])->name('index');
-    Route::get('/create', [TimesheetController::class, 'create'])->name('create');
-    Route::post('/', [TimesheetController::class, 'store'])->name('store');
     Route::get('/export/csv', [TimesheetController::class, 'exportCsv'])->name('export.csv');
     Route::get('/reports/employee-summary', [TimesheetController::class, 'employeeSummary'])->name('reports.employee');
     Route::get('/reports/project-summary', [TimesheetController::class, 'projectSummary'])->name('reports.project');

@@ -9,7 +9,7 @@ class TimesheetProgressService
     public function recalculateTask(ProjectTask $task): void
     {
         $spent = (float) $task->timesheets()
-            ->whereIn('status', ['draft', 'submitted', 'approved'])
+            ->whereIn('status', ['draft', 'running', 'submitted', 'approved'])
             ->sum('hours_spent');
 
         $planned = (float) $task->planned_hours;

@@ -6,7 +6,6 @@
     <div class="timesheet-title">Timesheets / All Timesheets</div>
     <div class="timesheet-toolbar">
         <div class="d-flex gap-2">
-            <a href="{{ route('timesheets.create') }}" class="btn btn-oh btn-sm">Create</a>
             <a href="{{ route('timesheets.export.csv', request()->query()) }}" class="btn btn-oh-light btn-sm"><i class="bi bi-download"></i></a>
         </div>
         <form method="get" class="timesheet-search">
@@ -38,6 +37,7 @@
                 <th style="width: 120px;" class="text-end">Hours Spent</th>
                 <th style="width: 120px;" class="text-end">Time</th>
                 <th style="width: 110px;">Status</th>
+                <th style="width: 95px;">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -51,6 +51,7 @@
                         @endphp
                         {{ intdiv($groupSeconds, 3600) }}h {{ intdiv($groupSeconds % 3600, 60) }}m {{ $groupSeconds % 60 }}s
                     </td>
+                    <td></td>
                     <td></td>
                 </tr>
                 @foreach($rows as $row)
@@ -66,10 +67,15 @@
                             {{ intdiv($seconds, 3600) }}h {{ intdiv($seconds % 3600, 60) }}m {{ $seconds % 60 }}s
                         </td>
                         <td><span class="ts-badge ts-{{ $row->status }}">{{ ucfirst($row->status) }}</span></td>
+                        <td>
+                            <a href="{{ route('timesheets.show', $row) }}#status-log" class="btn btn-oh-light btn-sm" title="View status">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
                     </tr>
                 @endforeach
             @empty
-                <tr><td colspan="8" class="text-center text-secondary py-4">No timesheets found.</td></tr>
+                <tr><td colspan="9" class="text-center text-secondary py-4">No timesheets found.</td></tr>
             @endforelse
         </tbody>
     </table>
