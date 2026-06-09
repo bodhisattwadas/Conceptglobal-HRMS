@@ -74,6 +74,7 @@ class TimesheetDesktopApp:
         self.total_elapsed_seconds = 0
         self.last_activity_at = time.monotonic()
         self.timer_after_id: str | None = None
+        self.stopped_by_inactivity = False
 
         self._configure_style()
         self._bind_activity_tracking()
@@ -122,6 +123,9 @@ class TimesheetDesktopApp:
 
     def _mark_active(self, _event=None) -> None:
         self.last_activity_at = time.monotonic()
+        if getattr(self, "stopped_by_inactivity", False):
+            self.stopped_by_inactivity = False
+            self._start_timer()
 
     def _clear(self) -> None:
         for child in self.root.winfo_children():
@@ -413,6 +417,7 @@ class TimesheetDesktopApp:
             )
             return
         self.timer_running = True
+        self.stopped_by_inactivity = False
         self.timer_started_at = time.monotonic()
         self.current_elapsed_seconds = 0
         now_text = datetime.now().strftime("%I:%M %p")
@@ -439,6 +444,10 @@ class TimesheetDesktopApp:
             self.timer_after_id = None
         self._update_current_elapsed()
         self.timer_running = False
+        if reason == "Stopped by timeout":
+            self.stopped_by_inactivity = True
+        else:
+            self.stopped_by_inactivity = False
         self.total_elapsed_seconds += self.current_elapsed_seconds
         self.end_time_var.set(datetime.now().strftime("%I:%M %p"))
         self.timer_status_var.set(reason)
@@ -458,11 +467,25 @@ class TimesheetDesktopApp:
             idle_seconds = now - self.last_activity_at
         if idle_seconds >= INACTIVITY_SECONDS:
             self._stop_timer("Stopped by timeout")
+            self._check_activity_while_stopped()
             return
         self._update_current_elapsed()
         self._refresh_timer_labels()
         self._sync_hours_from_timer()
         self.timer_after_id = self.root.after(1000, self._tick_timer)
+
+    def _check_activity_while_stopped(self) -> None:
+        if self.timer_running or not self.stopped_by_inactivity:
+            return
+        now = time.monotonic()
+        idle_seconds = system_idle_seconds()
+        if idle_seconds is None:
+            idle_seconds = now - self.last_activity_at
+        if idle_seconds < INACTIVITY_SECONDS:
+            self.stopped_by_inactivity = False
+            self._start_timer()
+        else:
+            self.timer_after_id = self.root.after(1000, self._check_activity_while_stopped)
 
     def _update_current_elapsed(self) -> None:
         if self.timer_started_at is None:
@@ -700,6 +723,7 @@ class TimesheetDesktopApp:
         self.total_elapsed_seconds = int(row.get("timer_elapsed_seconds") or 0)
         self.current_elapsed_seconds = 0
         self.timer_running = False
+        self.stopped_by_inactivity = False
         self.timer_started_at = None
         self._clear_action_logs()
         for log in row.get("timer_logs") or []:
@@ -737,6 +761,7 @@ class TimesheetDesktopApp:
         self.current_elapsed_seconds = elapsed_since_start
         self.timer_started_at = time.monotonic() - elapsed_since_start
         self.timer_running = True
+        self.stopped_by_inactivity = False
         self.timer_status_var.set("Running")
         self.end_time_var.set("--:-- --")
         self._set_timer_buttons(running=True)
@@ -961,6 +986,7 @@ class TimesheetDesktopApp:
     def _clear_form(self) -> None:
         if self.timer_running:
             self._stop_timer_by_button()
+        self.stopped_by_inactivity = False
         self.date_var.set(date.today().strftime("%d/%m/%Y"))
         self.current_timesheet_id = None
         self.current_desktop_uuid = None
