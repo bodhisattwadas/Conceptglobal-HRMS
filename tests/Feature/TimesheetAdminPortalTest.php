@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\Timesheet;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,6 +16,8 @@ class TimesheetAdminPortalTest extends TestCase
 
     public function test_admin_timesheet_list_hides_old_manual_rows_and_shows_desktop_synced_rows(): void
     {
+        $this->actingAs(User::factory()->create(['access_level' => 'super_admin']));
+
         $employee = Employee::create([
             'first_name' => 'Abigail',
             'last_name' => 'Peterson',
@@ -64,4 +67,3 @@ class TimesheetAdminPortalTest extends TestCase
         $response->assertDontSee('Old seeded manual row');
     }
 }
-

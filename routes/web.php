@@ -1,9 +1,10 @@
 <?php
 
+use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\EmployeePortalController;
 use App\Http\Controllers\HrAdministrationController;
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\LoanController;
 use App\Http\Controllers\MasterSettingController;
@@ -13,21 +14,33 @@ use App\Http\Controllers\ProjectTaskController;
 use App\Http\Controllers\TimesheetController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', DashboardController::class)->name('dashboard');
-
-Route::get('/organization', [OrganizationController::class, 'index'])->name('organization.index');
-Route::post('/organization/companies', [OrganizationController::class, 'storeCompany'])->name('organization.companies.store');
-Route::post('/organization/departments', [OrganizationController::class, 'storeDepartment'])->name('organization.departments.store');
-Route::post('/organization/job-positions', [OrganizationController::class, 'storeJobPosition'])->name('organization.job-positions.store');
-Route::post('/organization/job-roles', [OrganizationController::class, 'storeJobRole'])->name('organization.job-roles.store');
-
-Route::prefix('admin/hr')->name('hr-admin.')->group(function (): void {
-    Route::get('/departments', [HrAdministrationController::class, 'departments'])->name('departments.index');
-    Route::get('/employees', [HrAdministrationController::class, 'employees'])->name('employees.index');
-    Route::get('/announcements/create', [HrAdministrationController::class, 'announcementCreate'])->name('announcements.create');
-    Route::get('/transfers/create', [HrAdministrationController::class, 'transferCreate'])->name('transfers.create');
-    Route::get('/resignations/RES001', [HrAdministrationController::class, 'resignation'])->name('resignations.show');
+Route::middleware('guest')->group(function (): void {
+    Route::get('/login', [SessionController::class, 'create'])->name('login');
+    Route::post('/login', [SessionController::class, 'store'])->name('login.store');
 });
+
+Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth')->name('logout');
+
+Route::middleware(['auth', 'access:employee'])->prefix('employee')->name('employee.')->group(function (): void {
+    Route::get('/dashboard', [EmployeePortalController::class, 'dashboard'])->name('dashboard');
+});
+
+Route::get('/', DashboardController::class)->middleware('auth')->name('dashboard');
+
+Route::middleware(['auth', 'access:super_admin'])->group(function (): void {
+    Route::get('/organization', [OrganizationController::class, 'index'])->name('organization.index');
+    Route::post('/organization/companies', [OrganizationController::class, 'storeCompany'])->name('organization.companies.store');
+    Route::post('/organization/departments', [OrganizationController::class, 'storeDepartment'])->name('organization.departments.store');
+    Route::post('/organization/job-positions', [OrganizationController::class, 'storeJobPosition'])->name('organization.job-positions.store');
+    Route::get('/organization/job-positions/{jobPosition}/edit', [OrganizationController::class, 'editJobPosition'])->name('organization.job-positions.edit');
+    Route::put('/organization/job-positions/{jobPosition}', [OrganizationController::class, 'updateJobPosition'])->name('organization.job-positions.update');
+    Route::delete('/organization/job-positions/{jobPosition}', [OrganizationController::class, 'destroyJobPosition'])->name('organization.job-positions.destroy');
+
+    Route::prefix('admin/hr')->name('hr-admin.')->group(function (): void {
+        Route::get('/departments', [HrAdministrationController::class, 'departments'])->name('departments.index');
+        Route::get('/employees', [HrAdministrationController::class, 'employees'])->name('employees.index');
+        Route::get('/announcements/create', [HrAdministrationController::class, 'announcementCreate'])->name('announcements.create');
+    });
 
 Route::patch('/employees/{employee}/archive', [EmployeeController::class, 'archive'])->name('employees.archive');
 Route::patch('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
@@ -47,19 +60,6 @@ Route::post('/loans/{loan}/approve', [LoanController::class, 'approve'])->name('
 Route::post('/loans/{loan}/refuse', [LoanController::class, 'refuse'])->name('loans.refuse');
 Route::post('/loans/{loan}/cancel', [LoanController::class, 'cancel'])->name('loans.cancel');
 Route::resource('employees', EmployeeController::class)->except(['destroy']);
-
-Route::get('/attendances/check', [AttendanceController::class, 'checkInOut'])->name('attendance.check');
-Route::post('/attendances/toggle', [AttendanceController::class, 'toggle'])->name('attendance.toggle');
-Route::get('/attendances', [AttendanceController::class, 'records'])->name('attendance.records');
-Route::get('/attendances/devices/{device}', [AttendanceController::class, 'device'])->name('attendance.devices.show');
-Route::get('/attendances/regularization/{regularization}', [AttendanceController::class, 'regularization'])->name('attendance.regularization.show');
-Route::patch('/attendances/regularization/{regularization}/approve', [AttendanceController::class, 'approveRegularization'])->name('attendance.regularization.approve');
-Route::patch('/attendances/regularization/{regularization}/reject', [AttendanceController::class, 'rejectRegularization'])->name('attendance.regularization.reject');
-Route::get('/attendances/reporting', [AttendanceController::class, 'reporting'])->name('attendance.reporting');
-Route::get('/attendance/check', [AttendanceController::class, 'checkInOut']);
-Route::get('/attendance/machines/{device}', [AttendanceController::class, 'device']);
-Route::get('/attendance/regularizations/{regularization}', [AttendanceController::class, 'regularization']);
-Route::get('/attendance/reporting', [AttendanceController::class, 'reporting']);
 
 Route::get('/leaves/types', [LeaveController::class, 'types'])->name('leaves.types');
 Route::get('/leaves/requests', [LeaveController::class, 'requests'])->name('leaves.requests');
@@ -113,6 +113,8 @@ Route::prefix('timesheets')->name('timesheets.')->group(function (): void {
     Route::get('/reports/task-summary', [TimesheetController::class, 'taskSummary'])->name('reports.task');
     Route::get('/settings', [TimesheetController::class, 'settings'])->name('settings.edit');
     Route::post('/settings', [TimesheetController::class, 'updateSettings'])->name('settings.update');
+    Route::post('/projects', [TimesheetController::class, 'storeProject'])->name('projects.store');
+    Route::post('/projects/{project}/assignments', [TimesheetController::class, 'updateProjectAssignments'])->name('projects.assignments.update');
     Route::get('/{timesheet}', [TimesheetController::class, 'show'])->name('show');
     Route::get('/{timesheet}/edit', [TimesheetController::class, 'edit'])->name('edit');
     Route::put('/{timesheet}', [TimesheetController::class, 'update'])->name('update');
@@ -122,4 +124,5 @@ Route::prefix('timesheets')->name('timesheets.')->group(function (): void {
     Route::post('/{timesheet}/reject', [TimesheetController::class, 'reject'])->name('reject');
 });
 
-Route::get('/projects/tasks/{task}', [ProjectTaskController::class, 'show'])->name('projects.tasks.show');
+    Route::get('/projects/tasks/{task}', [ProjectTaskController::class, 'show'])->name('projects.tasks.show');
+});

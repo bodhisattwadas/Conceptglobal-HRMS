@@ -228,7 +228,7 @@ class TimesheetDesktopApp:
         return box
 
     def _timesheet_tree(self, parent: ttk.Frame, rows) -> ttk.Treeview:
-        columns = ("date", "employee", "project", "task", "start", "end", "hours", "billable", "description")
+        columns = ("date", "employee", "project", "start", "end", "hours", "billable", "description")
         tree = ttk.Treeview(parent, columns=columns, show=("tree", "headings"))
         tree.heading("#0", text="Status", anchor="center")
         tree.column("#0", width=130, anchor="center", stretch=False)
@@ -236,7 +236,6 @@ class TimesheetDesktopApp:
             "date": "Date",
             "employee": "Employee",
             "project": "Project",
-            "task": "Task",
             "start": "Start",
             "end": "End",
             "hours": "Hours",
@@ -247,7 +246,6 @@ class TimesheetDesktopApp:
             "date": 100,
             "employee": 160,
             "project": 150,
-            "task": 220,
             "start": 80,
             "end": 80,
             "hours": 80,
@@ -272,7 +270,6 @@ class TimesheetDesktopApp:
                     row["date"],
                     self._row_employee_name(row),
                     self._row_project_name(row),
-                    self._row_task_title(row),
                     row.get("start_time") or "",
                     row.get("end_time") or "",
                     f'{float(row.get("hours_spent") or 0):g}',
@@ -319,11 +316,9 @@ class TimesheetDesktopApp:
         self.employee_map = {employee_name: employee_id}
         self.project_map = {row["name"]: row["id"] for row in projects}
         self.project_lookup = {row["id"]: row for row in projects}
-        self.task_map: dict[str, int] = {}
 
         self.employee_var = tk.StringVar(value=employee_name)
         self.project_var = tk.StringVar(value=projects[0]["name"] if projects else "")
-        self.task_var = tk.StringVar()
         self.date_var = tk.StringVar(value=date.today().strftime("%d/%m/%Y"))
         self.start_time_var = tk.StringVar(value="--:-- --")
         self.end_time_var = tk.StringVar(value="--:-- --")
@@ -348,8 +343,6 @@ class TimesheetDesktopApp:
         self._field(form, "Date", ttk.Entry(form, textvariable=self.date_var), 1, 2)
         project_combo = self._combo(form, self.project_var, list(self.project_map))
         self._field(form, "Project", project_combo, 2, 0)
-        self.task_combo = self._combo(form, self.task_var, [])
-        self._field(form, "Task", self.task_combo, 2, 2)
         self._field(form, "Billable", self._combo(form, self.billable_var, ["No", "Yes"]), 3, 0)
 
         ttk.Label(form, text="Description", style="Section.TLabel").grid(row=8, column=0, sticky="w", pady=(12, 4))
@@ -365,9 +358,6 @@ class TimesheetDesktopApp:
         ttk.Button(actions, text="Save and Submit Final", style="Accent.TButton", command=lambda: self._save_timesheet(submit_final=True)).pack(side="right", padx=(0, 8))
         ttk.Button(actions, text="Save Draft", style="Ghost.TButton", command=lambda: self._save_timesheet(submit_final=False)).pack(side="right", padx=(0, 8))
         self._set_delete_button_state()
-
-        self.project_var.trace_add("write", self._load_tasks)
-        self._load_tasks()
 
     def _field(self, parent: ttk.Frame, label: str, widget: tk.Widget, row: int, column: int) -> None:
         ttk.Label(parent, text=label, style="Section.TLabel").grid(row=row * 2, column=column, sticky="w", padx=(0, 28), pady=(0, 4))
@@ -411,14 +401,6 @@ class TimesheetDesktopApp:
     def _timer_detail(self, parent: ttk.Frame, label: str, variable: tk.StringVar, row: int, column: int) -> None:
         ttk.Label(parent, text=label, style="Section.TLabel").grid(row=row, column=column, sticky="w", padx=(0, 8))
         ttk.Label(parent, textvariable=variable, style="TimerMeta.TLabel").grid(row=row, column=column + 1, sticky="w", padx=(0, 28))
-
-    def _load_tasks(self, *_args) -> None:
-        project_id = self.project_map.get(self.project_var.get())
-        project = self.project_lookup.get(project_id, {}) if project_id else {}
-        task_rows = project.get("tasks", [])
-        self.task_map = {f"{self.project_var.get()} / {row['title']}": row["id"] for row in task_rows}
-        self.task_combo["values"] = list(self.task_map)
-        self.task_var.set(next(iter(self.task_map), ""))
 
     def _start_timer(self) -> None:
         if self.timer_running:
@@ -544,7 +526,6 @@ class TimesheetDesktopApp:
                     "id": self.current_timesheet_id,
                     "desktop_uuid": desktop_uuid,
                     "project_id": self.project_map[self.project_var.get()],
-                    "project_task_id": self.task_map[self.task_var.get()],
                     "date": self._parse_date().isoformat(),
                     "start_time": None if self.start_time_var.get().startswith("--") else self.start_time_var.get(),
                     "end_time": None if self.end_time_var.get().startswith("--") else self.end_time_var.get(),
@@ -591,7 +572,6 @@ class TimesheetDesktopApp:
                     "id": self.current_timesheet_id,
                     "desktop_uuid": desktop_uuid,
                     "project_id": self.project_map[self.project_var.get()],
-                    "project_task_id": self.task_map[self.task_var.get()],
                     "date": self._parse_date().isoformat(),
                     "start_time": None if self.start_time_var.get().startswith("--") else self.start_time_var.get(),
                     "end_time": None if self.end_time_var.get().startswith("--") else self.end_time_var.get(),
@@ -711,11 +691,6 @@ class TimesheetDesktopApp:
         project_name = self._row_project_name(row)
         if project_name in self.project_map:
             self.project_var.set(project_name)
-            self._load_tasks()
-        task_title = self._row_task_title(row)
-        task_key = next((key for key in self.task_map if key.endswith(f" / {task_title}")), "")
-        if task_key:
-            self.task_var.set(task_key)
         self.start_time_var.set(self._display_time(row.get("start_time")) or "--:-- --")
         self.end_time_var.set(self._display_time(row.get("end_time")) or "--:-- --")
         self.hours_var.set(str(row.get("hours_spent") or "1.00"))
@@ -835,7 +810,6 @@ class TimesheetDesktopApp:
             ("Employee", self._row_employee_name(row)),
             ("Date", self._display_date(row.get("date"))),
             ("Project", self._row_project_name(row)),
-            ("Task", self._row_task_title(row)),
             ("Start", self._display_time(row.get("start_time")) or "-"),
             ("End", self._resolved_end_time(row)),
             ("Hours", f'{float(row.get("hours_spent") or 0):g}'),
@@ -957,12 +931,6 @@ class TimesheetDesktopApp:
         if isinstance(project, dict):
             return project.get("name") or ""
         return str(project or "")
-
-    def _row_task_title(self, row: dict) -> str:
-        task = row.get("task")
-        if isinstance(task, dict):
-            return task.get("title") or ""
-        return str(task or "")
 
     def _status_key(self, row: dict) -> str:
         return str(row.get("status") or "unknown").strip().lower()

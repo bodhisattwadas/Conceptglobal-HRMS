@@ -15,6 +15,7 @@ use Illuminate\Notifications\Notifiable;
     'name',
     'email',
     'password',
+    'access_level',
     'desktop_api_token_hash',
     'desktop_api_token_last_used_at',
     'desktop_last_login_machine_ip',
@@ -38,6 +39,16 @@ class User extends Authenticatable
             'password' => 'hashed',
             'desktop_api_token_last_used_at' => 'datetime',
         ];
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->access_level === 'super_admin';
+    }
+
+    public function isEmployee(): bool
+    {
+        return $this->access_level === 'employee';
     }
 
     public function employee(): HasOne

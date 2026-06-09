@@ -6,8 +6,6 @@
         <a href="{{ route('employees.index') }}" class="odoo-module-title">Employees</a>
         <a href="{{ route('employees.index') }}" @class(['active' => request()->routeIs('employees.*')])>Employees</a>
         <a href="{{ route('organization.index') }}">Departments</a>
-        <a href="#">Reporting</a>
-        <a href="#">Configuration</a>
     </div>
 </nav>
 

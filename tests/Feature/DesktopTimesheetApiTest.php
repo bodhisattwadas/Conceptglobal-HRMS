@@ -40,6 +40,7 @@ class DesktopTimesheetApiTest extends TestCase
             'planned_hours' => 40,
             'status' => 'in_progress',
         ]);
+        $project->assignees()->attach($employee->id, ['assigned_at' => now()]);
 
         $login = $this->postJson('/api/desktop/login', [
             'email' => 'abigail@example.test',
@@ -101,7 +102,7 @@ class DesktopTimesheetApiTest extends TestCase
             'email' => 'abigail@example.test',
             'password' => Hash::make('secret-password'),
         ]);
-        Employee::create([
+        $employee = Employee::create([
             'user_id' => $user->id,
             'first_name' => 'Abigail',
             'last_name' => 'Peterson',
@@ -115,6 +116,7 @@ class DesktopTimesheetApiTest extends TestCase
             'planned_hours' => 40,
             'status' => 'in_progress',
         ]);
+        $project->assignees()->attach($employee->id, ['assigned_at' => now()]);
 
         $token = $this->postJson('/api/desktop/login', [
             'email' => 'abigail@example.test',
@@ -172,6 +174,7 @@ class DesktopTimesheetApiTest extends TestCase
             'planned_hours' => 40,
             'status' => 'in_progress',
         ]);
+        $project->assignees()->attach($employee->id, ['assigned_at' => now()]);
 
         $token = $this->postJson('/api/desktop/login', [
             'email' => 'abigail@example.test',
@@ -235,6 +238,7 @@ class DesktopTimesheetApiTest extends TestCase
             'planned_hours' => 40,
             'status' => 'in_progress',
         ]);
+        $project->assignees()->attach($employee->id, ['assigned_at' => now()]);
         $draft = Timesheet::create([
             'employee_id' => $employee->id,
             'project_id' => $project->id,
@@ -300,6 +304,7 @@ class DesktopTimesheetApiTest extends TestCase
             'planned_hours' => 40,
             'status' => 'in_progress',
         ]);
+        $project->assignees()->attach($employee->id, ['assigned_at' => now()]);
 
         $token = $this->postJson('/api/desktop/login', [
             'email' => 'abigail@example.test',
@@ -368,6 +373,7 @@ class DesktopTimesheetApiTest extends TestCase
             'planned_hours' => 40,
             'status' => 'in_progress',
         ]);
+        $project->assignees()->attach($employee->id, ['assigned_at' => now()]);
         Timesheet::create([
             'employee_id' => $employee->id,
             'project_id' => $project->id,

@@ -6,8 +6,12 @@ use App\Models\ProjectTask;
 
 class TimesheetProgressService
 {
-    public function recalculateTask(ProjectTask $task): void
+    public function recalculateTask(?ProjectTask $task): void
     {
+        if (! $task) {
+            return;
+        }
+
         $spent = (float) $task->timesheets()
             ->whereIn('status', ['draft', 'running', 'submitted', 'approved'])
             ->sum('hours_spent');

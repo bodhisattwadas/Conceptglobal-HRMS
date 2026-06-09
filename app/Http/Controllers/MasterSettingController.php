@@ -9,24 +9,11 @@ use Illuminate\View\View;
 
 class MasterSettingController extends Controller
 {
-    private const INDIA_DOCUMENT_TYPES = [
-        'Aadhaar Card',
-        'PAN Card',
-        'Passport',
-        'Voter ID',
-        'Driving License',
-        'UAN Card',
-        'ESIC Card',
-        'Employment Contract',
-        'Offer Letter',
-        'Experience Certificate',
-    ];
-
     public function edit(): View
     {
         $settings = MasterSetting::firstOrCreate([]);
         if (empty($settings->employee_document_types)) {
-            $settings->employee_document_types = self::INDIA_DOCUMENT_TYPES;
+            $settings->employee_document_types = MasterSetting::DEFAULT_EMPLOYEE_DOCUMENT_TYPES;
             $settings->save();
         }
 
@@ -52,7 +39,7 @@ class MasterSettingController extends Controller
 
         MasterSetting::firstOrCreate([])->update([
             'default_currency_code' => $data['default_currency_code'],
-            'employee_document_types' => empty($types) ? self::INDIA_DOCUMENT_TYPES : $types,
+            'employee_document_types' => empty($types) ? MasterSetting::DEFAULT_EMPLOYEE_DOCUMENT_TYPES : $types,
         ]);
 
         return back()->with('status', 'Master settings saved.');

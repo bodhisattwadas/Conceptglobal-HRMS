@@ -4,8 +4,6 @@
         <a href="{{ route('hr-admin.employees.index') }}">Employees</a>
         <a href="{{ route('hr-admin.departments.index') }}">Departments</a>
         <a href="{{ route('hr-admin.announcements.create') }}">Announcements</a>
-        <a href="{{ route('hr-admin.transfers.create') }}">Transfers</a>
-        <a href="{{ route('hr-admin.resignations.show') }}">Resignation</a>
         <a href="#">Configuration</a>
     </div>
 </nav>

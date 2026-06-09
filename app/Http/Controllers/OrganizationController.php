@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\Department;
 use App\Models\JobPosition;
-use App\Models\JobRole;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -19,7 +18,6 @@ class OrganizationController extends Controller
             'companies' => Company::latest()->get(),
             'departments' => Department::with('companies')->latest()->get(),
             'jobPositions' => JobPosition::with('department', 'companies')->latest()->get(),
-            'jobRoles' => JobRole::with('jobPosition.department', 'companies')->latest()->get(),
         ]);
     }
 
@@ -53,31 +51,61 @@ class OrganizationController extends Controller
 
     public function storeJobPosition(Request $request): RedirectResponse
     {
-        $data = $request->validate([
-            'department_id' => ['required', 'exists:departments,id'],
-            'name' => ['required', 'string', 'max:100'],
-            'company_ids' => ['array'],
-            'company_ids.*' => ['exists:companies,id'],
-        ]);
+        $data = $this->validatedJobPosition($request);
 
-        $position = JobPosition::create($data);
+        $position = JobPosition::create([
+            'department_id' => $data['department_id'],
+            'name' => $data['name'],
+        ]);
         $position->companies()->sync($data['company_ids'] ?? []);
 
         return back()->with('status', 'Job position created.');
     }
 
-    public function storeJobRole(Request $request): RedirectResponse
+    public function editJobPosition(JobPosition $jobPosition): View
     {
-        $data = $request->validate([
-            'job_position_id' => ['required', 'exists:job_positions,id'],
+        $jobPosition->load('companies');
+
+        return view('organization.job-position-edit', [
+            'position' => $jobPosition,
+            'companies' => Company::latest()->get(),
+            'departments' => Department::latest()->get(),
+        ]);
+    }
+
+    public function updateJobPosition(Request $request, JobPosition $jobPosition): RedirectResponse
+    {
+        $data = $this->validatedJobPosition($request);
+
+        $jobPosition->update([
+            'department_id' => $data['department_id'],
+            'name' => $data['name'],
+        ]);
+        $jobPosition->companies()->sync($data['company_ids'] ?? []);
+
+        return redirect()
+            ->route('organization.index', ['menu' => 'job-positions'])
+            ->with('status', 'Job position updated.');
+    }
+
+    public function destroyJobPosition(JobPosition $jobPosition): RedirectResponse
+    {
+        $jobPosition->companies()->detach();
+        $jobPosition->delete();
+
+        return redirect()
+            ->route('organization.index', ['menu' => 'job-positions'])
+            ->with('status', 'Job position deleted.');
+    }
+
+    private function validatedJobPosition(Request $request): array
+    {
+        return $request->validate([
+            'department_id' => ['required', 'exists:departments,id'],
             'name' => ['required', 'string', 'max:100'],
             'company_ids' => ['array'],
             'company_ids.*' => ['exists:companies,id'],
         ]);
-
-        $role = JobRole::create($data);
-        $role->companies()->sync($data['company_ids'] ?? []);
-
-        return back()->with('status', 'Job role created.');
     }
+
 }

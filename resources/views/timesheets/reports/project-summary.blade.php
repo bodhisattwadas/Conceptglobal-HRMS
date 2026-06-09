@@ -7,7 +7,6 @@
     <div class="timesheet-controls">
         <a href="{{ route('timesheets.reports.employee') }}">Employee</a>
         <a href="{{ route('timesheets.reports.project') }}">Project</a>
-        <a href="{{ route('timesheets.reports.task') }}">Task</a>
     </div>
     <table class="timesheet-table">
         <thead><tr><th>Project</th><th>Status</th><th class="text-end">Planned Hours</th><th class="text-end">Spent Hours</th><th class="text-end">Remaining</th><th class="text-end">Extra</th></tr></thead>

@@ -156,7 +156,7 @@ def apply_schema(conn: sqlite3.Connection) -> None:
 
         CREATE TABLE IF NOT EXISTS project_task_assignees (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            project_task_id INTEGER NOT NULL,
+            project_task_id INTEGER,
             employee_id INTEGER NOT NULL,
             assigned_at TEXT NOT NULL,
             UNIQUE(project_task_id, employee_id),

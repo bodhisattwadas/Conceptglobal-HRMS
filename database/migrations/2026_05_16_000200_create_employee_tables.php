@@ -34,7 +34,6 @@ return new class extends Migration
             $table->foreignId('company_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('department_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('job_position_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('job_role_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('reporting_manager_id')->nullable()->constrained('employees')->nullOnDelete();
             $table->string('email')->nullable();
             $table->date('date_joining')->nullable();

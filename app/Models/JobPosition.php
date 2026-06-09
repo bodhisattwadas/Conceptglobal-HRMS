@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['department_id', 'name', 'is_active'])]
 class JobPosition extends Model
@@ -30,8 +29,4 @@ class JobPosition extends Model
         return $this->belongsToMany(Company::class)->withTimestamps();
     }
 
-    public function jobRoles(): HasMany
-    {
-        return $this->hasMany(JobRole::class);
-    }
 }

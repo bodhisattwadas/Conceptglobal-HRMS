@@ -75,7 +75,7 @@ class DesktopTimesheetController extends Controller
         return response()->json([
             'user' => $this->userPayload($user, $employee),
             'projects' => Project::query()
-                ->with(['tasks' => fn ($query) => $query->orderBy('title')])
+                ->whereHas('assignees', fn ($query) => $query->whereKey($employee->id))
                 ->where('status', '!=', 'cancelled')
                 ->orderBy('name')
                 ->get()
@@ -83,12 +83,6 @@ class DesktopTimesheetController extends Controller
                     'id' => $project->id,
                     'name' => $project->name,
                     'code' => $project->code,
-                    'tasks' => $project->tasks->map(fn (ProjectTask $task): array => [
-                        'id' => $task->id,
-                        'title' => $task->title,
-                        'planned_hours' => (float) $task->planned_hours,
-                        'status' => $task->status,
-                    ])->values(),
                 ])->values(),
         ]);
     }
@@ -118,7 +112,7 @@ class DesktopTimesheetController extends Controller
             'id' => ['nullable', 'integer', 'exists:timesheets,id'],
             'desktop_uuid' => ['nullable', 'uuid'],
             'project_id' => ['required', 'exists:projects,id'],
-            'project_task_id' => ['required', 'exists:project_tasks,id'],
+            'project_task_id' => ['nullable', 'exists:project_tasks,id'],
             'date' => ['required', 'date'],
             'start_time' => ['nullable', 'string'],
             'end_time' => ['nullable', 'string'],
@@ -138,15 +132,35 @@ class DesktopTimesheetController extends Controller
             'machine.mac' => ['nullable', 'string', 'max:17'],
         ]);
 
-        $task = ProjectTask::query()
-            ->whereKey($data['project_task_id'])
-            ->where('project_id', $data['project_id'])
+        $project = Project::query()
+            ->whereKey($data['project_id'])
+            ->where('status', '!=', 'cancelled')
             ->first();
 
-        if (! $task) {
+        if (! $project) {
             throw ValidationException::withMessages([
-                'project_task_id' => 'Selected task does not belong to selected project.',
+                'project_id' => 'Selected project is not available.',
             ]);
+        }
+
+        $isAssigned = $project->assignees()->whereKey($employee->id)->exists();
+        if (! $isAssigned) {
+            throw ValidationException::withMessages([
+                'project_id' => 'Selected project is not assigned to you.',
+            ]);
+        }
+
+        if (! empty($data['project_task_id'])) {
+            $taskBelongsToProject = ProjectTask::query()
+                ->whereKey($data['project_task_id'])
+                ->where('project_id', $data['project_id'])
+                ->exists();
+
+            if (! $taskBelongsToProject) {
+                throw ValidationException::withMessages([
+                    'project_task_id' => 'Selected task does not belong to selected project.',
+                ]);
+            }
         }
 
         $desktopUuid = $data['desktop_uuid'] ?? null;
@@ -190,11 +204,11 @@ class DesktopTimesheetController extends Controller
         }
 
         $payload = [
-            'company_id' => $task->company_id,
+            'company_id' => $project->company_id,
             'employee_id' => $employee->id,
             'department_id' => $employee->workInformation?->department_id,
             'project_id' => $data['project_id'],
-            'project_task_id' => $data['project_task_id'],
+            'project_task_id' => $data['project_task_id'] ?? null,
             'date' => $data['date'],
             'start_time' => $this->normalizeTime($data['start_time'] ?? null),
             'end_time' => $this->normalizeTime($data['end_time'] ?? null),
@@ -219,8 +233,8 @@ class DesktopTimesheetController extends Controller
             $timesheet = Timesheet::query()->create($payload);
         }
 
-        $progress->recalculateTask($task);
-        if ($oldTask && $oldTask->id !== $task->id) {
+        $progress->recalculateTask($timesheet->task);
+        if ($oldTask && $oldTask->id !== $timesheet->project_task_id) {
             $progress->recalculateTask($oldTask);
         }
 

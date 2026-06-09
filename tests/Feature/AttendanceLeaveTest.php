@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\AttendanceRecord;
-use App\Models\AttendanceRegularizationRequest;
 use App\Models\Company;
 use App\Models\Employee;
 use App\Models\LeaveRequest;
 use App\Models\LeaveType;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,43 +14,21 @@ class AttendanceLeaveTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_attendance_toggle_closes_open_record(): void
+    public function test_attendance_routes_are_hidden(): void
     {
-        $employee = Employee::create([
-            'first_name' => 'Mitchell',
-            'last_name' => 'Admin',
-            'email' => 'mitchell@example.test',
-        ]);
-
-        AttendanceRecord::create([
-            'employee_id' => $employee->id,
-            'attendance_date' => now()->toDateString(),
-            'check_in_at' => now()->subHour(),
-            'status' => 'open',
-        ]);
-
-        $this->post(route('attendance.toggle'))->assertSessionHas('status', 'Checked out.');
-
-        $this->assertDatabaseHas('attendance_records', [
-            'employee_id' => $employee->id,
-            'status' => 'closed',
-        ]);
+        $this->get('/attendances/check')->assertNotFound();
+        $this->post('/attendances/toggle')->assertNotFound();
+        $this->get('/attendance/reporting')->assertNotFound();
     }
 
-    public function test_regularization_and_leave_can_be_approved(): void
+    public function test_leave_can_be_approved(): void
     {
+        $this->actingAs(User::factory()->create(['access_level' => 'super_admin']));
+
         $employee = Employee::create([
             'first_name' => 'Ronnie',
             'last_name' => 'Hart',
             'email' => 'ronnie@example.test',
-        ]);
-        $regularization = AttendanceRegularizationRequest::create([
-            'employee_id' => $employee->id,
-            'category' => 'Onsite',
-            'reason' => 'Going for onsite',
-            'from_at' => now(),
-            'to_at' => now()->addDay(),
-            'status' => 'requested',
         ]);
         $company = Company::create(['name' => 'My Company']);
         $leaveType = LeaveType::create(['name' => 'Compensatory Days']);
@@ -66,10 +43,8 @@ class AttendanceLeaveTest extends TestCase
             'status' => 'to_approve',
         ]);
 
-        $this->patch(route('attendance.regularization.approve', $regularization))->assertSessionHas('status', 'Regularization approved.');
         $this->patch(route('leaves.requests.approve', $leave))->assertSessionHas('status', 'Leave request approved.');
 
-        $this->assertSame('approved', $regularization->fresh()->status);
         $this->assertSame('approved', $leave->fresh()->status);
     }
 }

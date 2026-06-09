@@ -49,7 +49,7 @@ class TimesheetService:
         *,
         employee_id: int,
         project_id: int,
-        project_task_id: int,
+        project_task_id: int | None = None,
         entry_date: date,
         hours_spent: Decimal,
         description: str,
@@ -76,16 +76,14 @@ class TimesheetService:
         if Decimal(str(existing or 0)) + hours_spent > maximum:
             raise ValueError(f"Daily hours cannot exceed {maximum}.")
 
-        task = self.conn.execute(
-            "SELECT project_id, status FROM project_tasks WHERE id = ? AND deleted_at IS NULL",
-            (project_task_id,),
+        project = self.conn.execute(
+            "SELECT id, status FROM projects WHERE id = ? AND deleted_at IS NULL",
+            (project_id,),
         ).fetchone()
-        if not task:
-            raise ValueError("Task does not exist.")
-        if task["project_id"] != project_id:
-            raise ValueError("Task must belong to the selected project.")
-        if task["status"] in {"done", "cancelled"}:
-            raise ValueError("Cannot log time on completed or cancelled tasks.")
+        if not project:
+            raise ValueError("Project does not exist.")
+        if project["status"] == "cancelled":
+            raise ValueError("Cannot log time on cancelled projects.")
 
         employee = self.conn.execute(
             "SELECT department_id FROM employees WHERE id = ? AND is_active = 1",
@@ -129,7 +127,8 @@ class TimesheetService:
             """,
             (current_user.id, timesheet_id, f'{{"hours_spent": {float(hours_spent)}}}', now),
         )
-        recalculate_task_progress(self.conn, project_task_id)
+        if project_task_id:
+            recalculate_task_progress(self.conn, project_task_id)
         self.conn.commit()
         return int(timesheet_id)
 
@@ -168,7 +167,7 @@ class LookupService:
             FROM timesheets
             JOIN employees ON employees.id = timesheets.employee_id
             JOIN projects ON projects.id = timesheets.project_id
-            JOIN project_tasks ON project_tasks.id = timesheets.project_task_id
+            LEFT JOIN project_tasks ON project_tasks.id = timesheets.project_task_id
             WHERE timesheets.deleted_at IS NULL
             ORDER BY timesheets.date DESC, timesheets.id DESC
             """

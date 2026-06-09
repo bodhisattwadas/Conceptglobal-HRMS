@@ -145,58 +145,64 @@
         <div class="d-flex align-items-center gap-3 mb-4">
             <div class="brand-mark">H</div>
             <div>
-                <div class="fw-bold">Horilla HRMS</div>
+                <div class="fw-bold">{{ config('app.name') }}</div>
                 <div class="small text-white-50">Laravel migration</div>
             </div>
         </div>
         <div class="sidebar-user-tools">
             <span class="app-user-chip">
                 <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face" alt="Mitchell Admin" width="28" height="28" class="rounded-circle">
-                Mitchell Admin
+                {{ auth()->user()?->name ?? 'User' }}
             </span>
         </div>
 
         <nav class="d-grid gap-1">
-            <a href="{{ route('dashboard') }}" @class(['active' => request()->routeIs('dashboard')])>
-                <i class="bi bi-speedometer2"></i>
-                Dashboard
-            </a>
-            <a href="{{ route('organization.index') }}" @class(['active' => request()->routeIs('organization.*')])>
-                <i class="bi bi-building"></i>
-                Organization
-            </a>
-            <a href="{{ route('employees.index') }}" @class(['active' => request()->routeIs('employees.*')])>
-                <i class="bi bi-people"></i>
-                Employees
-            </a>
-            <a href="{{ route('hr-admin.departments.index') }}" @class(['active' => request()->routeIs('hr-admin.*')])>
-                <i class="bi bi-person-workspace"></i>
-                HR Administration
-            </a>
-            <a href="{{ route('attendance.check') }}" @class(['active' => request()->routeIs('attendance.*')])>
-                <i class="bi bi-calendar-check"></i>
-                Attendance
-            </a>
-            <a href="{{ route('leaves.types') }}" @class(['active' => request()->routeIs('leaves.*')])>
-                <i class="bi bi-briefcase"></i>
-                Leave
-            </a>
-            <a href="#">
-                <i class="bi bi-chat-dots"></i>
-                Communication
-            </a>
-            <a href="{{ route('loans.index') }}" @class(['active' => request()->routeIs('loans.*')])>
-                <i class="bi bi-cash-coin"></i>
-                Loans
-            </a>
-            <a href="{{ route('payroll.structures.index') }}" @class(['active' => request()->routeIs('payroll.*')])>
-                <i class="bi bi-cash-stack"></i>
-                Payroll
-            </a>
-            <a href="{{ route('timesheets.index') }}" @class(['active' => request()->routeIs('timesheets.*') || request()->routeIs('projects.tasks.*')])>
-                <i class="bi bi-clock-history"></i>
-                Timesheets
-            </a>
+            @if(auth()->user()?->isSuperAdmin())
+                <a href="{{ route('dashboard') }}" @class(['active' => request()->routeIs('dashboard')])>
+                    <i class="bi bi-speedometer2"></i>
+                    Dashboard
+                </a>
+                <a href="{{ route('organization.index') }}" @class(['active' => request()->routeIs('organization.*')])>
+                    <i class="bi bi-building"></i>
+                    Organization
+                </a>
+                <a href="{{ route('employees.index') }}" @class(['active' => request()->routeIs('employees.*')])>
+                    <i class="bi bi-people"></i>
+                    Employees
+                </a>
+                <a href="{{ route('hr-admin.departments.index') }}" @class(['active' => request()->routeIs('hr-admin.*')])>
+                    <i class="bi bi-person-workspace"></i>
+                    HR Administration
+                </a>
+                <a href="{{ route('leaves.types') }}" @class(['active' => request()->routeIs('leaves.*')])>
+                    <i class="bi bi-briefcase"></i>
+                    Leave
+                </a>
+                <a href="{{ route('loans.index') }}" @class(['active' => request()->routeIs('loans.*')])>
+                    <i class="bi bi-cash-coin"></i>
+                    Loans
+                </a>
+                <a href="{{ route('payroll.structures.index') }}" @class(['active' => request()->routeIs('payroll.*')])>
+                    <i class="bi bi-cash-stack"></i>
+                    Payroll
+                </a>
+                <a href="{{ route('timesheets.index') }}" @class(['active' => request()->routeIs('timesheets.*') || request()->routeIs('projects.tasks.*')])>
+                    <i class="bi bi-clock-history"></i>
+                    Timesheets
+                </a>
+            @else
+                <a href="{{ route('employee.dashboard') }}" @class(['active' => request()->routeIs('employee.*')])>
+                    <i class="bi bi-speedometer2"></i>
+                    My Dashboard
+                </a>
+            @endif
+            <form method="post" action="{{ route('logout') }}" class="mt-2">
+                @csrf
+                <button class="btn btn-link text-start text-white-50 text-decoration-none px-3">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Logout
+                </button>
+            </form>
         </nav>
     </aside>
 

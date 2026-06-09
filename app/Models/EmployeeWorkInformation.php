@@ -13,7 +13,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'company_id',
     'department_id',
     'job_position_id',
-    'job_role_id',
     'reporting_manager_id',
     'coach_id',
     'email',
@@ -56,11 +55,6 @@ class EmployeeWorkInformation extends Model
     public function jobPosition(): BelongsTo
     {
         return $this->belongsTo(JobPosition::class);
-    }
-
-    public function jobRole(): BelongsTo
-    {
-        return $this->belongsTo(JobRole::class);
     }
 
     public function reportingManager(): BelongsTo

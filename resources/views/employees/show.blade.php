@@ -5,6 +5,11 @@
 
 @section('content')
     @include('employees._module_nav')
+    @php
+        $relatedDocs = collect($employee->related_document_paths ?? [])->map(function ($doc) {
+            return is_array($doc) ? $doc : ['type' => 'Document', 'name' => basename((string) $doc), 'path' => (string) $doc];
+        });
+    @endphp
 
     <div class="odoo-form-title">Employees / {{ $employee->full_name }}</div>
     <div class="odoo-actionbar">
@@ -104,8 +109,8 @@
                                 <b>Related Docs</b>
                                 <span>
                                     @if(!empty($employee->related_document_paths))
-                                        @foreach($employee->related_document_paths as $docPath)
-                                            <a href="{{ \Illuminate\Support\Facades\Storage::url($docPath) }}" target="_blank">{{ basename($docPath) }}</a>@if(!$loop->last), @endif
+                                        @foreach($relatedDocs as $doc)
+                                            <a href="{{ \Illuminate\Support\Facades\Storage::url($doc['path']) }}" target="_blank">{{ $doc['type'] ?? 'Document' }}: {{ $doc['name'] ?? basename($doc['path']) }}</a>@if(!$loop->last), @endif
                                         @endforeach
                                     @endif
                                 </span>

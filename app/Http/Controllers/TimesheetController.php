@@ -28,12 +28,11 @@ class TimesheetController extends Controller
             $query->where(function ($q) use ($search): void {
                 $q->where('description', 'like', "%{$search}%")
                     ->orWhereHas('employee', fn ($e) => $e->where('first_name', 'like', "%{$search}%")->orWhere('last_name', 'like', "%{$search}%"))
-                    ->orWhereHas('project', fn ($p) => $p->where('name', 'like', "%{$search}%"))
-                    ->orWhereHas('task', fn ($t) => $t->where('title', 'like', "%{$search}%"));
+                    ->orWhereHas('project', fn ($p) => $p->where('name', 'like', "%{$search}%"));
             });
         }
 
-        foreach (['employee_id', 'project_id', 'project_task_id', 'status'] as $field) {
+        foreach (['employee_id', 'project_id', 'status'] as $field) {
             if ($request->filled($field)) {
                 $query->where($field, $request->input($field));
             }
@@ -49,7 +48,6 @@ class TimesheetController extends Controller
             'groupBy' => $groupBy,
             'employees' => Employee::active()->orderBy('first_name')->get(),
             'projects' => Project::orderBy('name')->get(),
-            'tasks' => ProjectTask::with('project')->orderBy('title')->get(),
             'totalHours' => $timesheets->sum(fn (Timesheet $row) => (float) $row->hours_spent),
         ]);
     }
@@ -74,20 +72,16 @@ class TimesheetController extends Controller
             return back()->with('status', 'Approved timesheets are locked.');
         }
 
-        $oldTask = $timesheet->task;
         $data = $this->validateTimesheet($request);
         $employee = Employee::with('workInformation')->findOrFail($data['employee_id']);
-        $task = ProjectTask::findOrFail($data['project_task_id']);
+        $project = Project::findOrFail($data['project_id']);
 
         $timesheet->update($data + [
-            'company_id' => $task->company_id,
+            'company_id' => $project->company_id,
             'department_id' => $employee->workInformation?->department_id,
         ]);
 
-        $progress->recalculateTask($task);
-        if ($oldTask && $oldTask->id !== $task->id) {
-            $progress->recalculateTask($oldTask);
-        }
+        $progress->recalculateTask($timesheet->task);
 
         return redirect()->route('timesheets.show', $timesheet)->with('status', 'Timesheet updated.');
     }
@@ -170,6 +164,8 @@ class TimesheetController extends Controller
     {
         return view('timesheets.settings', [
             'settings' => TimesheetSetting::firstOrCreate([]),
+            'projects' => Project::with('assignees')->orderBy('name')->get(),
+            'employees' => Employee::active()->orderBy('first_name')->get(),
         ]);
     }
 
@@ -193,23 +189,57 @@ class TimesheetController extends Controller
         return back()->with('status', 'Timesheet settings saved.');
     }
 
+    public function storeProject(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'code' => ['nullable', 'string', 'max:255'],
+            'status' => ['required', 'string', 'in:active,on_hold,done,cancelled'],
+            'description' => ['nullable', 'string', 'max:2000'],
+            'employee_ids' => ['nullable', 'array'],
+            'employee_ids.*' => ['integer', 'exists:employees,id'],
+        ]);
+
+        $project = Project::create([
+            'name' => $data['name'],
+            'code' => $data['code'] ?? null,
+            'status' => $data['status'],
+            'description' => $data['description'] ?? null,
+        ]);
+
+        $project->assignees()->sync($this->assignmentPayload($data['employee_ids'] ?? []));
+
+        return back()->with('status', 'Project created.');
+    }
+
+    public function updateProjectAssignments(Request $request, Project $project): RedirectResponse
+    {
+        $data = $request->validate([
+            'employee_ids' => ['nullable', 'array'],
+            'employee_ids.*' => ['integer', 'exists:employees,id'],
+        ]);
+
+        $project->assignees()->sync($this->assignmentPayload($data['employee_ids'] ?? []));
+
+        return back()->with('status', 'Project assignments updated.');
+    }
+
     public function exportCsv(Request $request): StreamedResponse
     {
         $rows = Timesheet::desktopSynced()
-            ->with('employee.workInformation.department', 'project', 'task')
+            ->with('employee.workInformation.department', 'project')
             ->orderBy('date')
             ->get();
 
         return response()->streamDownload(function () use ($rows): void {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date', 'Employee', 'Department', 'Project', 'Task', 'Description', 'Hours Spent', 'Status', 'Billable']);
+            fputcsv($out, ['Date', 'Employee', 'Department', 'Project', 'Description', 'Hours Spent', 'Status', 'Billable']);
             foreach ($rows as $row) {
                 fputcsv($out, [
                     $row->date?->format('d/m/Y'),
                     $row->employee?->full_name,
                     $row->department?->name,
                     $row->project?->name,
-                    $row->task?->title,
                     $row->description,
                     number_format((float) $row->hours_spent, 2),
                     ucfirst($row->status),
@@ -226,7 +256,6 @@ class TimesheetController extends Controller
             'timesheet' => $timesheet,
             'employees' => Employee::active()->orderBy('first_name')->get(),
             'projects' => Project::orderBy('name')->get(),
-            'tasks' => ProjectTask::with('project')->orderBy('title')->get(),
         ];
     }
 
@@ -240,7 +269,7 @@ class TimesheetController extends Controller
         $data = $request->validate([
             'employee_id' => ['required', 'exists:employees,id'],
             'project_id' => ['required', 'exists:projects,id'],
-            'project_task_id' => ['required', 'exists:project_tasks,id'],
+            'project_task_id' => ['nullable', 'exists:project_tasks,id'],
             'date' => ['required', 'date', 'before_or_equal:'.$maxDate],
             'start_time' => ['nullable', 'date_format:H:i'],
             'end_time' => ['nullable', 'date_format:H:i'],
@@ -251,7 +280,8 @@ class TimesheetController extends Controller
             'is_billable' => ['nullable'],
         ]);
 
-        $taskBelongsToProject = ProjectTask::whereKey($data['project_task_id'])->where('project_id', $data['project_id'])->exists();
+        $taskBelongsToProject = empty($data['project_task_id'])
+            || ProjectTask::whereKey($data['project_task_id'])->where('project_id', $data['project_id'])->exists();
         if (! $taskBelongsToProject) {
             throw ValidationException::withMessages([
                 'project_task_id' => 'Selected task does not belong to selected project.',
@@ -290,12 +320,19 @@ class TimesheetController extends Controller
         return $timesheets->groupBy(function (Timesheet $row) use ($groupBy): string {
             return match ($groupBy) {
                 'project' => $row->project?->name ?? 'No Project',
-                'task' => $row->task?->title ?? 'No Task',
                 'department' => $row->department?->name ?? 'No Department',
                 'date' => $row->date?->format('d/m/Y') ?? 'No Date',
                 'status' => ucfirst($row->status),
                 default => $row->employee?->full_name ?? 'No Employee',
             };
         });
+    }
+
+    private function assignmentPayload(array $employeeIds): array
+    {
+        return collect($employeeIds)
+            ->filter()
+            ->mapWithKeys(fn ($employeeId): array => [(int) $employeeId => ['assigned_at' => now()]])
+            ->all();
     }
 }

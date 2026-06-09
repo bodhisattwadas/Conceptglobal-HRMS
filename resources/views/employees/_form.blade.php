@@ -1,23 +1,32 @@
 @csrf
-@php($employee = $employee ?? null)
-@php($work = $employee?->workInformation)
-@php($bank = $employee?->bankDetail)
+@php
+    $employee = $employee ?? null;
+    $work = $employee?->workInformation;
+    $bank = $employee?->bankDetail;
+    $showExtendedWorkFields = $showExtendedWorkFields ?? true;
+    $documentTypes = $documentTypes ?? [];
+    $relatedDocs = collect($employee?->related_document_paths ?? [])->map(function ($doc) {
+        return is_array($doc) ? $doc : ['type' => 'Document', 'name' => basename((string) $doc), 'path' => (string) $doc];
+    });
+@endphp
 
-<div class="d-flex flex-wrap gap-2 mb-3">
-    @foreach ([
-        ['Contracts', 'bi-file-earmark-text'],
-        ['Time Off', 'bi-calendar2-week'],
-        ['Documents', 'bi-folder2-open'],
-        ['Payslips', 'bi-receipt'],
-        ['Timesheets', 'bi-clock-history'],
-        ['Loans', 'bi-bank'],
-    ] as [$label, $icon])
-        <button type="button" class="btn btn-sm btn-light border">
-            <i class="bi {{ $icon }}"></i>
-            {{ $label }}
-        </button>
-    @endforeach
-</div>
+@if($showModuleShortcuts ?? true)
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        @foreach ([
+            ['Contracts', 'bi-file-earmark-text'],
+            ['Time Off', 'bi-calendar2-week'],
+            ['Documents', 'bi-folder2-open'],
+            ['Payslips', 'bi-receipt'],
+            ['Timesheets', 'bi-clock-history'],
+            ['Loans', 'bi-bank'],
+        ] as [$label, $icon])
+            <button type="button" class="btn btn-sm btn-light border">
+                <i class="bi {{ $icon }}"></i>
+                {{ $label }}
+            </button>
+        @endforeach
+    </div>
+@endif
 
 <div class="row g-3 align-items-start">
     <div class="col-xl-9">
@@ -43,21 +52,10 @@
             @endforeach
         </select>
     </div>
-    <div class="col-md-8">
-        <label class="form-label">Profile Photo URL</label>
-        <input name="profile_photo_url" type="url" value="{{ old('profile_photo_url', $employee->profile_photo_url ?? '') }}" class="form-control" placeholder="https://...">
-    </div>
     <div class="col-md-4">
         <label class="form-label">Profile Image Upload</label>
-        <input name="profile_photo_file" type="file" class="form-control" accept="image/*">
-    </div>
-    <div class="col-md-6">
-        <label class="form-label">CV Upload</label>
-        <input name="cv_file" type="file" class="form-control" accept=".pdf,.doc,.docx">
-    </div>
-    <div class="col-md-6">
-        <label class="form-label">Related Documents</label>
-        <input name="related_documents[]" type="file" class="form-control" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" multiple>
+        <input name="profile_photo_file" type="file" class="form-control" accept="image/jpeg,image/png,image/webp">
+        <div class="form-text">JPG, PNG, or WebP. 100x100 to 3000x3000 px. Max 2 MB.</div>
     </div>
     <div class="col-md-4">
         <label class="form-label">Card Color</label>
@@ -85,6 +83,9 @@
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#hr-settings" type="button">HR Settings</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#documents-info" type="button">Documents</button>
     </li>
     <li class="nav-item" role="presentation">
         <button class="nav-link" data-bs-toggle="tab" data-bs-target="#bank-info" type="button">Bank</button>
@@ -142,15 +143,6 @@
                 </select>
             </div>
             <div class="col-md-4">
-                <label class="form-label">Job Role</label>
-                <select name="job_role_id" class="form-select">
-                    <option value="">Select role</option>
-                    @foreach ($jobRoles as $role)
-                        <option value="{{ $role->id }}" @selected((int) old('job_role_id', $work->job_role_id ?? 0) === $role->id)>{{ $role->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-4">
                 <label class="form-label">Manager</label>
                 <select name="reporting_manager_id" class="form-select">
                     <option value="">Select manager</option>
@@ -159,23 +151,25 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-4">
-                <label class="form-label">Coach</label>
-                <select name="coach_id" class="form-select">
-                    <option value="">Select coach</option>
-                    @foreach ($managers as $manager)
-                        <option value="{{ $manager->id }}" @selected((int) old('coach_id', $work->coach_id ?? 0) === $manager->id)>{{ $manager->full_name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Work Location</label>
-                <input name="work_location" value="{{ old('work_location', $work->work_location ?? '') }}" class="form-control">
-            </div>
-            <div class="col-md-4">
-                <label class="form-label">Working Hours</label>
-                <input name="working_hours" value="{{ old('working_hours', $work->working_hours ?? '') }}" class="form-control" placeholder="Standard 40 hours/week">
-            </div>
+            @if($showExtendedWorkFields)
+                <div class="col-md-4">
+                    <label class="form-label">Coach</label>
+                    <select name="coach_id" class="form-select">
+                        <option value="">Select coach</option>
+                        @foreach ($managers as $manager)
+                            <option value="{{ $manager->id }}" @selected((int) old('coach_id', $work->coach_id ?? 0) === $manager->id)>{{ $manager->full_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Work Location</label>
+                    <input name="work_location" value="{{ old('work_location', $work->work_location ?? '') }}" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Working Hours</label>
+                    <input name="working_hours" value="{{ old('working_hours', $work->working_hours ?? '') }}" class="form-control" placeholder="Standard 40 hours/week">
+                </div>
+            @endif
             <div class="col-md-4">
                 <label class="form-label">Timezone</label>
                 <select name="timezone" class="form-select">
@@ -260,6 +254,82 @@
         <label class="form-label">Employment Type</label>
         <input name="employment_type" value="{{ old('employment_type', $work->employment_type ?? '') }}" class="form-control" placeholder="Permanent, contract, intern">
     </div>
+    <div class="col-md-4">
+        <label class="form-label">Access Role</label>
+        <select name="access_level" class="form-select">
+            <option value="employee" @selected(old('access_level', $employee?->user?->access_level ?? 'employee') === 'employee')>Employee</option>
+            <option value="super_admin" @selected(old('access_level', $employee?->user?->access_level ?? 'employee') === 'super_admin')>Admin</option>
+        </select>
+        <div class="form-text">Employee is the default. Admin gives super admin access.</div>
+    </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade" id="documents-info">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">CV Upload</label>
+                <input name="cv_file" type="file" class="form-control" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+                <div class="form-text">PDF, DOC, or DOCX. Max 10 MB.</div>
+                @if(isset($employee) && $employee?->cv_file_path)
+                    <div class="mt-2">
+                        <a href="{{ \Illuminate\Support\Facades\Storage::url($employee->cv_file_path) }}" target="_blank">View current CV</a>
+                    </div>
+                @endif
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">Employee Documents</label>
+                <div class="employee-doc-upload-list" data-doc-upload-list>
+                    <div class="employee-doc-upload-row">
+                        <select name="related_document_types[]" class="form-select">
+                            <option value="">Select document type</option>
+                            @foreach($documentTypes as $type)
+                                <option value="{{ $type }}">{{ $type }}</option>
+                            @endforeach
+                        </select>
+                        <input name="related_documents[]" type="file" class="form-control" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                        <button type="button" class="btn btn-outline-secondary" data-remove-doc-row aria-label="Remove document row">&times;</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-light border mt-2" data-add-doc-row>
+                    <i class="bi bi-plus-lg"></i>
+                    Add Document
+                </button>
+                <div class="form-text">Upload documents one by one. Allowed: PDF, DOC, DOCX, PNG, JPG, JPEG. Max 10 MB each.</div>
+            </div>
+
+            @if($relatedDocs->isNotEmpty())
+                <div class="col-12">
+                    <div class="fw-semibold mb-2">Current Documents</div>
+                    <div class="table-responsive">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Type</th>
+                                    <th>File</th>
+                                    <th>Uploaded</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($relatedDocs as $doc)
+                                    <tr>
+                                        <td>{{ $doc['type'] ?? 'Document' }}</td>
+                                        <td>
+                                            @if(!empty($doc['path']))
+                                                <a href="{{ \Illuminate\Support\Facades\Storage::url($doc['path']) }}" target="_blank">{{ $doc['name'] ?? basename($doc['path']) }}</a>
+                                            @else
+                                                {{ $doc['name'] ?? '-' }}
+                                            @endif
+                                        </td>
+                                        <td>{{ $doc['uploaded_at'] ?? '-' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 
@@ -313,5 +383,48 @@
             object-fit: cover;
             width: 100%;
         }
+        .employee-doc-upload-list {
+            display: grid;
+            gap: 10px;
+        }
+        .employee-doc-upload-row {
+            display: grid;
+            gap: 10px;
+            grid-template-columns: minmax(180px, 260px) minmax(220px, 1fr) auto;
+        }
+        @media (max-width: 900px) {
+            .employee-doc-upload-row {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
+@endpush
+
+@push('scripts')
+    <script>
+        document.addEventListener('click', function (event) {
+            const addButton = event.target.closest('[data-add-doc-row]');
+            const removeButton = event.target.closest('[data-remove-doc-row]');
+
+            if (addButton) {
+                const list = document.querySelector('[data-doc-upload-list]');
+                const row = list.querySelector('.employee-doc-upload-row').cloneNode(true);
+
+                row.querySelectorAll('select, input').forEach(function (field) {
+                    field.value = '';
+                });
+
+                list.appendChild(row);
+            }
+
+            if (removeButton) {
+                const list = removeButton.closest('[data-doc-upload-list]');
+                const rows = list.querySelectorAll('.employee-doc-upload-row');
+
+                if (rows.length > 1) {
+                    removeButton.closest('.employee-doc-upload-row').remove();
+                }
+            }
+        });
+    </script>
 @endpush

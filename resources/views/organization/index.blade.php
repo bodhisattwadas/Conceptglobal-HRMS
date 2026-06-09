@@ -1,6 +1,6 @@
 @extends('layouts.app', [
     'heading' => 'Organization',
-    'subheading' => 'Companies, departments, positions, and roles',
+    'subheading' => 'Companies, departments, and job positions',
 ])
 
 @section('content')
@@ -13,7 +13,6 @@
             <a href="{{ route('organization.index', ['menu' => 'companies']) }}" @class(['active' => $menu === 'companies'])>Companies</a>
             <a href="{{ route('organization.index', ['menu' => 'departments']) }}" @class(['active' => $menu === 'departments'])>Departments</a>
             <a href="{{ route('organization.index', ['menu' => 'job-positions']) }}" @class(['active' => $menu === 'job-positions'])>Job Positions</a>
-            <a href="{{ route('organization.index', ['menu' => 'job-roles']) }}" @class(['active' => $menu === 'job-roles'])>Job Roles</a>
         </div>
     </nav>
     <div class="row g-4">
@@ -158,6 +157,7 @@
                             <th>Name</th>
                             <th>Department</th>
                             <th>Companies</th>
+                            <th class="text-end">Actions</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -166,61 +166,17 @@
                                 <td class="fw-semibold">{{ $position->name }}</td>
                                 <td>{{ $position->department?->name ?: '-' }}</td>
                                 <td>{{ $position->companies->pluck('name')->join(', ') ?: '-' }}</td>
+                                <td class="text-end">
+                                    <a href="{{ route('organization.job-positions.edit', $position) }}" class="btn btn-sm btn-oh-light">Edit</a>
+                                    <form method="post" action="{{ route('organization.job-positions.destroy', $position) }}" class="d-inline" onsubmit="return confirm('Delete this job position?');">
+                                        @csrf
+                                        @method('delete')
+                                        <button class="btn btn-sm btn-outline-danger">Delete</button>
+                                    </form>
+                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="3" class="text-center text-secondary py-4">No job positions yet.</td></tr>
-                        @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        @elseif($menu === 'job-roles')
-        <div class="col-xl-6">
-            <div class="card table-card">
-                <div class="card-header org-card-header fw-semibold">New Job Role</div>
-                <div class="card-body">
-                    <form method="post" action="{{ route('organization.job-roles.store') }}" class="vstack gap-3">
-                        @csrf
-                        <select name="job_position_id" class="form-select" required>
-                            <option value="">Select position</option>
-                            @foreach ($jobPositions as $position)
-                                <option value="{{ $position->id }}">{{ $position->name }}</option>
-                            @endforeach
-                        </select>
-                        <input name="name" class="form-control" placeholder="Job role" required>
-                        <select name="company_ids[]" class="form-select" multiple>
-                            @foreach ($companies as $company)
-                                <option value="{{ $company->id }}">{{ $company->name }}</option>
-                            @endforeach
-                        </select>
-                        <button class="btn btn-oh">Create Role</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-6">
-            <div class="card table-card">
-                <div class="card-header org-card-header fw-semibold">Job Roles</div>
-                <div class="table-responsive">
-                    <table class="table align-middle mb-0">
-                        <thead class="org-table-head">
-                        <tr>
-                            <th>Name</th>
-                            <th>Job Position</th>
-                            <th>Companies</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        @forelse ($jobRoles as $role)
-                            <tr>
-                                <td class="fw-semibold">{{ $role->name }}</td>
-                                <td>{{ $role->jobPosition?->name ?: '-' }}</td>
-                                <td>{{ $role->companies->pluck('name')->join(', ') ?: '-' }}</td>
-                            </tr>
-                        @empty
-                            <tr><td colspan="3" class="text-center text-secondary py-4">No job roles yet.</td></tr>
+                            <tr><td colspan="4" class="text-center text-secondary py-4">No job positions yet.</td></tr>
                         @endforelse
                         </tbody>
                     </table>
@@ -297,6 +253,16 @@
             background: #6f4b94;
             border-color: #6f4b94;
             color: #fff;
+        }
+        .btn-oh-light {
+            background: #fff;
+            border: 1px solid #cfd6df;
+            color: #111827;
+        }
+        .btn-oh-light:hover {
+            background: #f3f4f6;
+            border-color: #c4cbd5;
+            color: #111827;
         }
     </style>
 @endpush

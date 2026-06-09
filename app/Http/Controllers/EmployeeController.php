@@ -9,11 +9,14 @@ use App\Models\Employee;
 use App\Models\EmployeeBankDetail;
 use App\Models\EmployeeWorkInformation;
 use App\Models\JobPosition;
-use App\Models\JobRole;
 use App\Models\MasterSetting;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class EmployeeController extends Controller
@@ -24,7 +27,6 @@ class EmployeeController extends Controller
             'workInformation.company',
             'workInformation.department',
             'workInformation.jobPosition',
-            'workInformation.jobRole',
         ])
             ->when($request->string('search')->toString(), function ($query, string $search): void {
                 $query->where(function ($query) use ($search): void {
@@ -85,6 +87,7 @@ class EmployeeController extends Controller
         $employeePayload = $data['employee'];
         $this->attachUploads($request, $employeePayload, $employee);
         $employee->update($employeePayload);
+        $this->syncEmployeeUser($employee, $data['access_level']);
         EmployeeWorkInformation::create([
             ...$data['work'],
             'employee_id' => $employee->id,
@@ -103,7 +106,6 @@ class EmployeeController extends Controller
             'workInformation.company',
             'workInformation.department',
             'workInformation.jobPosition',
-            'workInformation.jobRole',
             'workInformation.reportingManager',
             'workInformation.coach',
             'bankDetail',
@@ -124,20 +126,10 @@ class EmployeeController extends Controller
     {
         $employee->load('workInformation.jobPosition');
         $settings = MasterSetting::firstOrCreate([]);
-        $documentTypes = $settings->employee_document_types ?: [
-            'Aadhaar Card',
-            'PAN Card',
-            'Passport',
-            'Voter ID',
-            'Driving License',
-            'UAN Card',
-            'ESIC Card',
-            'Employment Contract',
-        ];
 
         return view('employees.documents-create', [
             'employee' => $employee,
-            'documentTypes' => $documentTypes,
+            'documentTypes' => $settings->employee_document_types ?: MasterSetting::DEFAULT_EMPLOYEE_DOCUMENT_TYPES,
         ]);
     }
 
@@ -250,7 +242,7 @@ class EmployeeController extends Controller
 
     public function edit(Employee $employee): View
     {
-        $employee->load('workInformation', 'bankDetail');
+        $employee->load('workInformation', 'bankDetail', 'user');
 
         return view('employees.edit', [
             ...$this->formData(),
@@ -265,6 +257,7 @@ class EmployeeController extends Controller
         $this->attachUploads($request, $employeePayload, $employee);
 
         $employee->update($employeePayload);
+        $this->syncEmployeeUser($employee, $data['access_level']);
         $employee->workInformation()->updateOrCreate(
             ['employee_id' => $employee->id],
             $data['work']
@@ -297,8 +290,8 @@ class EmployeeController extends Controller
             'companies' => Company::active()->orderBy('name')->get(),
             'departments' => Department::active()->orderBy('name')->get(),
             'jobPositions' => JobPosition::active()->orderBy('name')->get(),
-            'jobRoles' => JobRole::active()->orderBy('name')->get(),
             'managers' => Employee::where('is_active', true)->orderBy('first_name')->get(),
+            'documentTypes' => $this->documentTypes(),
             'timezones' => [
                 'Asia/Kolkata',
                 'America/Los_Angeles',
@@ -316,15 +309,28 @@ class EmployeeController extends Controller
 
         $data = $request->validate([
             'badge_id' => ['nullable', 'string', 'max:50'],
-            'profile_photo_url' => ['nullable', 'url', 'max:255'],
-            'profile_photo_file' => ['nullable', 'image', 'max:5120'],
+            'profile_photo_file' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:2048',
+                'dimensions:min_width=100,min_height=100,max_width=3000,max_height=3000',
+            ],
             'cv_file' => ['nullable', 'file', 'mimes:pdf,doc,docx', 'max:10240'],
+            'related_document_types' => ['nullable', 'array'],
+            'related_document_types.*' => ['nullable', 'string', 'max:100'],
             'related_documents' => ['nullable', 'array'],
             'related_documents.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,png,jpg,jpeg', 'max:10240'],
             'card_color' => ['nullable', 'string', 'max:20'],
             'first_name' => ['required', 'string', 'max:200'],
             'last_name' => ['nullable', 'string', 'max:200'],
-            'email' => ['required', 'email', 'max:255', "unique:employees,email,{$employeeId}"],
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                "unique:employees,email,{$employeeId}",
+                Rule::unique('users', 'email')->ignore($employee?->user_id),
+            ],
             'phone' => ['nullable', 'string', 'max:30'],
             'gender' => ['nullable', 'in:male,female,other'],
             'date_of_birth' => ['nullable', 'date'],
@@ -343,7 +349,6 @@ class EmployeeController extends Controller
             'company_id' => ['nullable', 'exists:companies,id'],
             'department_id' => ['nullable', 'exists:departments,id'],
             'job_position_id' => ['nullable', 'exists:job_positions,id'],
-            'job_role_id' => ['nullable', 'exists:job_roles,id'],
             'reporting_manager_id' => ['nullable', 'exists:employees,id'],
             'coach_id' => ['nullable', 'exists:employees,id'],
             'work_email' => ['nullable', 'email', 'max:255'],
@@ -359,12 +364,12 @@ class EmployeeController extends Controller
             'account_holder_name' => ['nullable', 'string', 'max:160'],
             'ifsc_code' => ['nullable', 'string', 'max:40'],
             'branch' => ['nullable', 'string', 'max:120'],
+            'access_level' => ['nullable', 'in:employee,super_admin'],
         ]);
 
         return [
             'employee' => [
                 'badge_id' => $data['badge_id'] ?? null,
-                'profile_photo_url' => $data['profile_photo_url'] ?? null,
                 'card_color' => $data['card_color'] ?? '#6f42c1',
                 'first_name' => $data['first_name'],
                 'last_name' => $data['last_name'] ?? null,
@@ -389,7 +394,6 @@ class EmployeeController extends Controller
                 'company_id' => $data['company_id'] ?? null,
                 'department_id' => $data['department_id'] ?? null,
                 'job_position_id' => $data['job_position_id'] ?? null,
-                'job_role_id' => $data['job_role_id'] ?? null,
                 'reporting_manager_id' => $data['reporting_manager_id'] ?? null,
                 'coach_id' => $data['coach_id'] ?? null,
                 'email' => $data['work_email'] ?? null,
@@ -408,7 +412,29 @@ class EmployeeController extends Controller
                 'ifsc_code' => $data['ifsc_code'] ?? null,
                 'branch' => $data['branch'] ?? null,
             ],
+            'access_level' => $data['access_level'] ?? 'employee',
         ];
+    }
+
+    private function syncEmployeeUser(Employee $employee, string $accessLevel): void
+    {
+        $user = $employee->user ?: User::firstOrNew(['email' => $employee->email]);
+
+        $user->fill([
+            'name' => $employee->full_name ?: $employee->email,
+            'email' => $employee->email,
+            'access_level' => $accessLevel,
+        ]);
+
+        if (! $user->exists) {
+            $user->password = Hash::make('password');
+        }
+
+        $user->save();
+
+        if ($employee->user_id !== $user->id) {
+            $employee->forceFill(['user_id' => $user->id])->save();
+        }
     }
 
     private function smartButtons(Employee $employee): array
@@ -433,21 +459,44 @@ class EmployeeController extends Controller
         $baseFolder = $this->employeeFolder($existing);
 
         if ($request->hasFile('profile_photo_file')) {
-            $employeePayload['profile_photo_url'] = Storage::url(
-                $request->file('profile_photo_file')->store($baseFolder.'/photo', 'public')
-            );
+            $this->deleteStoredPublicFile($existing->profile_photo_url);
+
+            $file = $request->file('profile_photo_file');
+            $extension = $file->extension() ?: $file->getClientOriginalExtension();
+            $filename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'profile-photo';
+            $path = $file->storeAs($baseFolder.'/photo', $filename.'-'.now()->format('YmdHis').'.'.$extension, 'public');
+
+            $employeePayload['profile_photo_url'] = Storage::url($path);
         }
 
         if ($request->hasFile('cv_file')) {
-            $employeePayload['cv_file_path'] = $request->file('cv_file')->store($baseFolder.'/cv', 'public');
+            if ($existing->cv_file_path) {
+                Storage::disk('public')->delete($existing->cv_file_path);
+            }
+
+            $employeePayload['cv_file_path'] = $this->storeNamedPublicFile(
+                $request->file('cv_file'),
+                $baseFolder.'/cv',
+                'cv'
+            );
         }
 
         if ($request->hasFile('related_documents')) {
             $existingDocs = $existing?->related_document_paths ?? [];
             $newDocs = [];
-            foreach ($request->file('related_documents') as $file) {
+            $documentTypes = $request->input('related_document_types', []);
+
+            foreach ($request->file('related_documents', []) as $index => $file) {
                 if ($file) {
-                    $newDocs[] = $file->store($baseFolder.'/related-documents', 'public');
+                    $type = trim((string) ($documentTypes[$index] ?? ''));
+                    $path = $this->storeNamedPublicFile($file, $baseFolder.'/related-documents', $type ?: 'document');
+
+                    $newDocs[] = [
+                        'type' => $type ?: 'Document',
+                        'name' => $file->getClientOriginalName(),
+                        'path' => $path,
+                        'uploaded_at' => now()->toDateTimeString(),
+                    ];
                 }
             }
             $employeePayload['related_document_paths'] = array_values(array_merge($existingDocs, $newDocs));
@@ -461,6 +510,30 @@ class EmployeeController extends Controller
         $cleanName = trim($cleanName, '-');
 
         return 'employees/'.$cleanName.'-'.$employee->id;
+    }
+
+    private function deleteStoredPublicFile(?string $url): void
+    {
+        if (! $url || ! str_starts_with($url, '/storage/')) {
+            return;
+        }
+
+        Storage::disk('public')->delete(Str::after($url, '/storage/'));
+    }
+
+    private function documentTypes(): array
+    {
+        $settings = MasterSetting::firstOrCreate([]);
+
+        return $settings->employee_document_types ?: MasterSetting::DEFAULT_EMPLOYEE_DOCUMENT_TYPES;
+    }
+
+    private function storeNamedPublicFile($file, string $folder, string $fallbackName): string
+    {
+        $extension = $file->extension() ?: $file->getClientOriginalExtension();
+        $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: Str::slug($fallbackName);
+
+        return $file->storeAs($folder, $name.'-'.now()->format('YmdHis').'.'.$extension, 'public');
     }
 
     public function view(Request $request, string $view): View

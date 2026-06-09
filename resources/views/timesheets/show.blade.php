@@ -24,7 +24,6 @@
             <div class="timesheet-field"><label>Employee</label><div>{{ $timesheet->employee?->full_name }}</div></div>
             <div class="timesheet-field"><label>Date</label><div>{{ $timesheet->date?->format('d/m/Y') }}</div></div>
             <div class="timesheet-field"><label>Project</label><div>{{ $timesheet->project?->name }}</div></div>
-            <div class="timesheet-field"><label>Task</label><div><a href="{{ route('projects.tasks.show', $timesheet->task) }}">{{ $timesheet->task?->title }}</a></div></div>
             <div class="timesheet-field"><label>Department</label><div>{{ $timesheet->department?->name ?: '-' }}</div></div>
             <div class="timesheet-field"><label>Hours Spent</label><div>{{ number_format((float) $timesheet->hours_spent, 2) }} h</div></div>
             <div class="timesheet-field">

@@ -11,7 +11,7 @@
         <form method="get" class="timesheet-search">
             <input name="search" value="{{ request('search') }}" placeholder="Search...">
             <select name="group_by" onchange="this.form.submit()">
-                @foreach(['employee' => 'Employee', 'project' => 'Project', 'task' => 'Task', 'department' => 'Department', 'date' => 'Date', 'status' => 'Status'] as $value => $label)
+                @foreach(['employee' => 'Employee', 'project' => 'Project', 'department' => 'Department', 'date' => 'Date', 'status' => 'Status'] as $value => $label)
                     <option value="{{ $value }}" @selected($groupBy === $value)>Group: {{ $label }}</option>
                 @endforeach
             </select>
@@ -32,7 +32,6 @@
                 <th style="width: 110px;">Date</th>
                 <th>Employee</th>
                 <th>Project</th>
-                <th>Task</th>
                 <th>Description</th>
                 <th style="width: 120px;" class="text-end">Hours Spent</th>
                 <th style="width: 120px;" class="text-end">Time</th>
@@ -43,7 +42,7 @@
         <tbody>
             @forelse($groups as $groupName => $rows)
                 <tr class="timesheet-group">
-                    <td colspan="5">{{ $groupName }} ({{ $rows->count() }})</td>
+                    <td colspan="4">{{ $groupName }} ({{ $rows->count() }})</td>
                     <td class="timesheet-total">{{ number_format($rows->sum(fn($row) => (float) $row->hours_spent), 2) }} h</td>
                     <td class="timesheet-total">
                         @php
@@ -59,7 +58,6 @@
                         <td>{{ $row->date?->format('d/m/Y') }}</td>
                         <td>{{ $row->employee?->full_name }}</td>
                         <td>{{ $row->project?->name }}</td>
-                        <td><a href="{{ route('projects.tasks.show', $row->task) }}">{{ $row->task?->title }}</a></td>
                         <td><a href="{{ route('timesheets.show', $row) }}">{{ $row->description ?: 'Timesheet entry' }}</a></td>
                         <td class="text-end">{{ number_format((float) $row->hours_spent, 2) }}</td>
                         <td class="text-end">

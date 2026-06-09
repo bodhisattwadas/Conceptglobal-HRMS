@@ -59,29 +59,10 @@ return new class extends Migration
             $table->primary(['company_id', 'job_position_id']);
         });
 
-        Schema::create('job_roles', function (Blueprint $table): void {
-            $table->id();
-            $table->foreignId('job_position_id')->constrained()->restrictOnDelete();
-            $table->string('name', 100);
-            $table->boolean('is_active')->default(true);
-            $table->foreignId('created_by_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->foreignId('modified_by_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->timestamps();
-            $table->unique(['job_position_id', 'name']);
-        });
-
-        Schema::create('company_job_role', function (Blueprint $table): void {
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('job_role_id')->constrained()->cascadeOnDelete();
-            $table->timestamps();
-            $table->primary(['company_id', 'job_role_id']);
-        });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('company_job_role');
-        Schema::dropIfExists('job_roles');
         Schema::dropIfExists('company_job_position');
         Schema::dropIfExists('job_positions');
         Schema::dropIfExists('company_department');

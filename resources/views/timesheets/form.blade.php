@@ -37,14 +37,6 @@
                     </select>
                 </div>
                 <div class="timesheet-field">
-                    <label>Task</label>
-                    <select name="project_task_id" id="timesheet_task_id" required>
-                        @foreach($tasks as $task)
-                            <option value="{{ $task->id }}" data-project-id="{{ $task->project_id }}" @selected(old('project_task_id', $timesheet?->project_task_id ?? request('project_task_id')) == $task->id)>{{ $task->project?->name }} / {{ $task->title }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="timesheet-field">
                     <label>Start Time</label>
                     <input type="time" name="start_time" value="{{ old('start_time', $timesheet?->start_time) }}">
                 </div>
@@ -98,31 +90,6 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const projectSelect = document.getElementById('timesheet_project_id');
-    const taskSelect = document.getElementById('timesheet_task_id');
-    if (!projectSelect || !taskSelect) return;
-
-    const syncTasks = () => {
-        const projectId = projectSelect.value;
-        let firstVisibleValue = null;
-        let selectedStillVisible = false;
-
-        Array.from(taskSelect.options).forEach((option) => {
-            const visible = option.dataset.projectId === projectId;
-            option.hidden = !visible;
-            option.disabled = !visible;
-            if (visible && firstVisibleValue === null) firstVisibleValue = option.value;
-            if (visible && option.selected) selectedStillVisible = true;
-        });
-
-        if (!selectedStillVisible && firstVisibleValue !== null) {
-            taskSelect.value = firstVisibleValue;
-        }
-    };
-
-    projectSelect.addEventListener('change', syncTasks);
-    syncTasks();
-
     const display = document.getElementById('timesheet_timer_display');
     const startBtn = document.getElementById('timesheet_timer_start');
     const stopBtn = document.getElementById('timesheet_timer_stop');

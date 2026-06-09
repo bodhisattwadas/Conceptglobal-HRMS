@@ -242,7 +242,7 @@ Deliverables:
 Exit criteria:
 
 - User can log in
-- Admin can create companies/departments/job positions/job roles
+- Admin can create companies/departments/job positions
 - Company switch affects scoped data
 - Audit log records create/update/delete
 
@@ -250,7 +250,7 @@ Exit criteria:
 
 Deliverables:
 
-- Companies, departments, job positions, job roles
+- Companies, departments, job positions
 - Work types, shifts, rotating shifts, schedules
 - Employee, work information, bank details
 - Tags, notes, policies, disciplinary actions
