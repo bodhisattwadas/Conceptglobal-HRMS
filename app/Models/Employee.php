@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Support\Facades\Storage;
 
 #[Fillable([
     'user_id',
@@ -104,6 +103,12 @@ class Employee extends Model
         }
 
         if (str_starts_with($value, 'http://') || str_starts_with($value, 'https://')) {
+            $parsedPath = parse_url($value, PHP_URL_PATH);
+
+            if (is_string($parsedPath) && str_contains($parsedPath, '/storage/')) {
+                return '/storage/'.ltrim((string) strstr($parsedPath, '/storage/'), '/storage/');
+            }
+
             return $value;
         }
 
@@ -115,6 +120,7 @@ class Employee extends Model
             return '/'.$value;
         }
 
-        return Storage::disk('public')->url($value);
+        // Keep URLs host-agnostic across local/live environments.
+        return '/storage/'.ltrim($value, '/');
     }
 }
