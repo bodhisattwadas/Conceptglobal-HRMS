@@ -1,0 +1,11 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keep existing files/directories in root accessible when needed.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Send all other requests to /public where Laravel assets and rewrite rules live.
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>

@@ -13,6 +13,7 @@
                     'submitLabel' => 'Create Employee',
                     'showModuleShortcuts' => false,
                     'showExtendedWorkFields' => false,
+                    'defaultTimezone' => 'Asia/Kolkata',
                 ])
             </form>
         </div>

@@ -175,7 +175,7 @@
                 <select name="timezone" class="form-select">
                     <option value="">Select timezone</option>
                     @foreach ($timezones as $timezone)
-                        <option value="{{ $timezone }}" @selected(old('timezone', $work->timezone ?? '') === $timezone)>{{ $timezone }}</option>
+                        <option value="{{ $timezone }}" @selected(old('timezone', $work->timezone ?? ($defaultTimezone ?? '')) === $timezone)>{{ $timezone }}</option>
                     @endforeach
                 </select>
             </div>
