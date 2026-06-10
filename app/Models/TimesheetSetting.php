@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
     'require_approval',
     'minimum_hours_per_entry',
     'maximum_hours_per_day',
+    'desktop_timer_timeout_seconds',
     'restrict_to_assigned_tasks',
     'lock_after_payroll',
 ])]
@@ -28,6 +29,7 @@ class TimesheetSetting extends Model
             'require_approval' => 'boolean',
             'minimum_hours_per_entry' => 'decimal:2',
             'maximum_hours_per_day' => 'decimal:2',
+            'desktop_timer_timeout_seconds' => 'integer',
             'restrict_to_assigned_tasks' => 'boolean',
             'lock_after_payroll' => 'boolean',
         ];

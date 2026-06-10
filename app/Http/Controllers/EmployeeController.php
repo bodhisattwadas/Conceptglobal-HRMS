@@ -87,7 +87,7 @@ class EmployeeController extends Controller
         $employeePayload = $data['employee'];
         $this->attachUploads($request, $employeePayload, $employee);
         $employee->update($employeePayload);
-        $this->syncEmployeeUser($employee, $data['access_level']);
+        $this->syncEmployeeUser($employee, $data['access_level'], $data['login_password']);
         EmployeeWorkInformation::create([
             ...$data['work'],
             'employee_id' => $employee->id,
@@ -257,7 +257,7 @@ class EmployeeController extends Controller
         $this->attachUploads($request, $employeePayload, $employee);
 
         $employee->update($employeePayload);
-        $this->syncEmployeeUser($employee, $data['access_level']);
+        $this->syncEmployeeUser($employee, $data['access_level'], $data['login_password']);
         $employee->workInformation()->updateOrCreate(
             ['employee_id' => $employee->id],
             $data['work']
@@ -365,6 +365,7 @@ class EmployeeController extends Controller
             'ifsc_code' => ['nullable', 'string', 'max:40'],
             'branch' => ['nullable', 'string', 'max:120'],
             'access_level' => ['nullable', 'in:employee,super_admin'],
+            'login_password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ]);
 
         return [
@@ -413,10 +414,11 @@ class EmployeeController extends Controller
                 'branch' => $data['branch'] ?? null,
             ],
             'access_level' => $data['access_level'] ?? 'employee',
+            'login_password' => $data['login_password'] ?? null,
         ];
     }
 
-    private function syncEmployeeUser(Employee $employee, string $accessLevel): void
+    private function syncEmployeeUser(Employee $employee, string $accessLevel, ?string $loginPassword = null): void
     {
         $user = $employee->user ?: User::firstOrNew(['email' => $employee->email]);
 
@@ -426,7 +428,9 @@ class EmployeeController extends Controller
             'access_level' => $accessLevel,
         ]);
 
-        if (! $user->exists) {
+        if ($loginPassword) {
+            $user->password = Hash::make($loginPassword);
+        } elseif (! $user->exists) {
             $user->password = Hash::make('password');
         }
 
@@ -466,7 +470,8 @@ class EmployeeController extends Controller
             $filename = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: 'profile-photo';
             $path = $file->storeAs($baseFolder.'/photo', $filename.'-'.now()->format('YmdHis').'.'.$extension, 'public');
 
-            $employeePayload['profile_photo_url'] = Storage::url($path);
+            // Store a disk-relative path so rendering is not tied to APP_URL host/port.
+            $employeePayload['profile_photo_url'] = $path;
         }
 
         if ($request->hasFile('cv_file')) {
@@ -514,11 +519,27 @@ class EmployeeController extends Controller
 
     private function deleteStoredPublicFile(?string $url): void
     {
-        if (! $url || ! str_starts_with($url, '/storage/')) {
+        if (! $url) {
             return;
         }
 
-        Storage::disk('public')->delete(Str::after($url, '/storage/'));
+        $path = null;
+
+        if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+            $parsedPath = parse_url($url, PHP_URL_PATH);
+            if (is_string($parsedPath) && str_starts_with($parsedPath, '/storage/')) {
+                $path = Str::after($parsedPath, '/storage/');
+            }
+        } elseif (str_starts_with($url, '/storage/')) {
+            $path = Str::after($url, '/storage/');
+        } elseif (! str_starts_with($url, '/')) {
+            // Backward/forward compatible: value already stored as public disk relative path.
+            $path = $url;
+        }
+
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     private function documentTypes(): array

@@ -15,7 +15,7 @@ from ..database import connect
 from ..services import CurrentUser, LookupService, TimesheetService
 
 
-INACTIVITY_SECONDS = 10
+DEFAULT_INACTIVITY_SECONDS = 10
 BG_COLOR = "#F4F6F8"
 SURFACE_COLOR = "#FFFFFF"
 TEXT_COLOR = "#182230"
@@ -61,6 +61,7 @@ class TimesheetDesktopApp:
         self.remote_user: dict | None = None
         self.remote_projects: list[dict] = []
         self.remote_timesheets: list[dict] = []
+        self.inactivity_seconds = DEFAULT_INACTIVITY_SECONDS
         self.current_timesheet_id: int | None = None
         self.current_desktop_uuid: str | None = None
         self.status_badge_images: dict[str, tk.PhotoImage] = {}
@@ -162,6 +163,8 @@ class TimesheetDesktopApp:
                 session = self.api.login(email_var.get().strip(), password_var.get())
                 bootstrap = self.api.bootstrap()
                 self.remote_user = session.user
+                self._apply_remote_settings(session.settings)
+                self._apply_remote_settings(bootstrap.get("settings", {}))
                 self.remote_projects = bootstrap.get("projects", [])
                 self.remote_timesheets = self.api.timesheets()
             except ApiError as exc:
@@ -176,6 +179,15 @@ class TimesheetDesktopApp:
     def _login_field(self, parent: ttk.Frame, label: str, widget: tk.Widget) -> None:
         ttk.Label(parent, text=label, style="Section.TLabel").pack(anchor="w", pady=(0, 4))
         widget.pack(fill="x", pady=(0, 12), ipady=4)
+
+    def _apply_remote_settings(self, settings: dict | None) -> None:
+        if not settings:
+            return
+        try:
+            timeout_seconds = int(settings.get("timer_timeout_seconds", DEFAULT_INACTIVITY_SECONDS))
+        except (TypeError, ValueError):
+            timeout_seconds = DEFAULT_INACTIVITY_SECONDS
+        self.inactivity_seconds = max(1, timeout_seconds)
 
     def _show_main(self) -> None:
         self._clear()
@@ -465,7 +477,7 @@ class TimesheetDesktopApp:
         idle_seconds = system_idle_seconds()
         if idle_seconds is None:
             idle_seconds = now - self.last_activity_at
-        if idle_seconds >= INACTIVITY_SECONDS:
+        if idle_seconds >= self.inactivity_seconds:
             self._stop_timer("Stopped by timeout")
             self._check_activity_while_stopped()
             return
@@ -481,7 +493,7 @@ class TimesheetDesktopApp:
         idle_seconds = system_idle_seconds()
         if idle_seconds is None:
             idle_seconds = now - self.last_activity_at
-        if idle_seconds < INACTIVITY_SECONDS:
+        if idle_seconds < self.inactivity_seconds:
             self.stopped_by_inactivity = False
             self._start_timer()
         else:

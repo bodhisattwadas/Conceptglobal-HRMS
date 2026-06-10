@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\Timesheet;
+use App\Models\TimesheetSetting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
@@ -14,6 +15,38 @@ use Tests\TestCase;
 class DesktopTimesheetApiTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_desktop_login_and_bootstrap_include_admin_configured_timer_timeout(): void
+    {
+        $user = User::create([
+            'name' => 'Abigail Peterson',
+            'email' => 'abigail@example.test',
+            'password' => Hash::make('secret-password'),
+        ]);
+        Employee::create([
+            'user_id' => $user->id,
+            'first_name' => 'Abigail',
+            'last_name' => 'Peterson',
+            'email' => 'abigail@example.test',
+            'is_active' => true,
+        ]);
+        TimesheetSetting::firstOrCreate([])->update([
+            'desktop_timer_timeout_seconds' => 45,
+        ]);
+
+        $login = $this->postJson('/api/desktop/login', [
+            'email' => 'abigail@example.test',
+            'password' => 'secret-password',
+        ]);
+
+        $login->assertOk()
+            ->assertJsonPath('settings.timer_timeout_seconds', 45);
+
+        $this->withHeader('Authorization', 'Bearer '.$login->json('token'))
+            ->getJson('/api/desktop/bootstrap')
+            ->assertOk()
+            ->assertJsonPath('settings.timer_timeout_seconds', 45);
+    }
 
     public function test_employee_can_login_and_sync_desktop_timesheet_with_logs(): void
     {

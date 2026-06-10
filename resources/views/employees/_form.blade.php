@@ -252,7 +252,20 @@
     </div>
     <div class="col-md-4">
         <label class="form-label">Employment Type</label>
-        <input name="employment_type" value="{{ old('employment_type', $work->employment_type ?? '') }}" class="form-control" placeholder="Permanent, contract, intern">
+        @php
+            $employmentType = old('employment_type', $work->employment_type ?? '');
+        @endphp
+        <select name="employment_type" class="form-select">
+            <option value="">Select employment type</option>
+            <option value="Permanent" @selected($employmentType === 'Permanent')>Permanent</option>
+            <option value="Contract" @selected($employmentType === 'Contract')>Contract</option>
+            <option value="Intern" @selected($employmentType === 'Intern')>Intern</option>
+            <option value="Part-time" @selected($employmentType === 'Part-time')>Part-time</option>
+            <option value="Temporary" @selected($employmentType === 'Temporary')>Temporary</option>
+            @if($employmentType && !in_array($employmentType, ['Permanent', 'Contract', 'Intern', 'Part-time', 'Temporary'], true))
+                <option value="{{ $employmentType }}" selected>{{ $employmentType }}</option>
+            @endif
+        </select>
     </div>
     <div class="col-md-4">
         <label class="form-label">Access Role</label>
@@ -261,6 +274,15 @@
             <option value="super_admin" @selected(old('access_level', $employee?->user?->access_level ?? 'employee') === 'super_admin')>Admin</option>
         </select>
         <div class="form-text">Employee is the default. Admin gives super admin access.</div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Login Password</label>
+        <input name="login_password" type="password" class="form-control" autocomplete="new-password" placeholder="Enter new password">
+        <div class="form-text">Leave blank to keep the current password.</div>
+    </div>
+    <div class="col-md-4">
+        <label class="form-label">Confirm Login Password</label>
+        <input name="login_password_confirmation" type="password" class="form-control" autocomplete="new-password" placeholder="Confirm new password">
     </div>
         </div>
     </div>

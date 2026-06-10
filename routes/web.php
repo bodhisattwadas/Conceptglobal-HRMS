@@ -23,6 +23,8 @@ Route::post('/logout', [SessionController::class, 'destroy'])->middleware('auth'
 
 Route::middleware(['auth', 'access:employee'])->prefix('employee')->name('employee.')->group(function (): void {
     Route::get('/dashboard', [EmployeePortalController::class, 'dashboard'])->name('dashboard');
+    Route::get('/profile/edit', [EmployeePortalController::class, 'editProfile'])->name('profile.edit');
+    Route::put('/profile', [EmployeePortalController::class, 'updateProfile'])->name('profile.update');
 });
 
 Route::get('/', DashboardController::class)->middleware('auth')->name('dashboard');

@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\Project;
 use App\Models\ProjectTask;
 use App\Models\Timesheet;
+use App\Models\TimesheetSetting;
 use App\Models\User;
 use App\Services\TimesheetProgressService;
 use Carbon\Carbon;
@@ -56,6 +57,7 @@ class DesktopTimesheetController extends Controller
             'token_type' => 'Bearer',
             'token' => $token,
             'user' => $this->userPayload($user, $employee),
+            'settings' => $this->settingsPayload(),
         ]);
     }
 
@@ -74,6 +76,7 @@ class DesktopTimesheetController extends Controller
 
         return response()->json([
             'user' => $this->userPayload($user, $employee),
+            'settings' => $this->settingsPayload(),
             'projects' => Project::query()
                 ->whereHas('assignees', fn ($query) => $query->whereKey($employee->id))
                 ->where('status', '!=', 'cancelled')
@@ -303,6 +306,15 @@ class DesktopTimesheetController extends Controller
         ];
     }
 
+    private function settingsPayload(): array
+    {
+        $settings = TimesheetSetting::firstOrCreate([]);
+
+        return [
+            'timer_timeout_seconds' => (int) $settings->desktop_timer_timeout_seconds,
+        ];
+    }
+
     private function timesheetPayload(Timesheet $timesheet): array
     {
         return [
@@ -358,7 +370,8 @@ class DesktopTimesheetController extends Controller
                 && Schema::hasColumn('users', 'desktop_last_login_machine_mac')
                 && Schema::hasColumn('timesheets', 'desktop_uuid')
                 && Schema::hasColumn('timesheets', 'desktop_submitted_machine_ip')
-                && Schema::hasColumn('timesheets', 'desktop_submitted_machine_mac'),
+                && Schema::hasColumn('timesheets', 'desktop_submitted_machine_mac')
+                && Schema::hasColumn('timesheet_settings', 'desktop_timer_timeout_seconds'),
             503,
             'Desktop API database migrations are not applied. Run php artisan migrate.'
         );

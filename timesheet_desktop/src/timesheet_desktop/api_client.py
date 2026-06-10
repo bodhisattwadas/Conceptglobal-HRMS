@@ -17,6 +17,7 @@ class ApiError(RuntimeError):
 class ApiSession:
     token: str
     user: dict[str, Any]
+    settings: dict[str, Any]
 
 
 class LaravelTimesheetApi:
@@ -31,7 +32,7 @@ class LaravelTimesheetApi:
             {"email": email, "password": password, "machine": machine_identity()},
             authenticated=False,
         )
-        self.session = ApiSession(token=response["token"], user=response["user"])
+        self.session = ApiSession(token=response["token"], user=response["user"], settings=response.get("settings", {}))
         return self.session
 
     def bootstrap(self) -> dict[str, Any]:

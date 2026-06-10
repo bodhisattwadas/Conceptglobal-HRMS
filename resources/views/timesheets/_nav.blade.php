@@ -48,6 +48,50 @@
         padding: 4px 8px;
     }
     .timesheet-controls { background: #fff; border-bottom: 1px solid #dfe3e8; display: flex; gap: 10px; padding: 6px 16px; }
+    .timesheet-report-switch {
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 10px;
+        padding-top: 10px;
+    }
+    .report-switch-btn {
+        background: #ffffff;
+        border: 1px solid #cfd6df;
+        border-radius: 999px;
+        color: #364154;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1;
+        padding: 8px 14px;
+        text-decoration: none;
+    }
+    .report-switch-btn:hover {
+        background: #f5f1fa;
+        border-color: #bba8d3;
+        color: #5a3f7c;
+    }
+    .report-switch-btn.is-active {
+        background: #7f55a4;
+        border-color: #7f55a4;
+        color: #fff;
+    }
+    .sortable-btn {
+        align-items: center;
+        color: inherit;
+        display: inline-flex;
+        gap: 6px;
+        text-decoration: none;
+        width: 100%;
+    }
+    .sortable-btn:hover {
+        color: #1f2937;
+        text-decoration: none;
+    }
+    .sortable-btn span {
+        color: #7f55a4;
+        font-size: 12px;
+        font-weight: 700;
+    }
     .timesheet-sheet {
         background: #fff;
         border: 1px solid #cfd6df;

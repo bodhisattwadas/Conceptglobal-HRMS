@@ -4,10 +4,9 @@
 @include('timesheets._nav')
 <div class="timesheet-page">
     <div class="timesheet-title">Timesheets / Reporting / Task Summary</div>
-    <div class="timesheet-controls">
-        <a href="{{ route('timesheets.reports.employee') }}">Employee</a>
-        <a href="{{ route('timesheets.reports.project') }}">Project</a>
-        <a href="{{ route('timesheets.reports.task') }}">Task</a>
+    <div class="timesheet-controls timesheet-report-switch">
+        <a href="{{ route('timesheets.reports.employee') }}" class="report-switch-btn">Employee</a>
+        <a href="{{ route('timesheets.reports.project') }}" class="report-switch-btn">Project</a>
     </div>
     <table class="timesheet-table">
         <thead><tr><th>Task</th><th>Project</th><th>Assignees</th><th class="text-end">Planned</th><th class="text-end">Spent</th><th>Progress</th><th>Status</th></tr></thead>

@@ -125,28 +125,56 @@ class TimesheetController extends Controller
         return $response;
     }
 
-    public function employeeSummary(): View
+    public function employeeSummary(Request $request): View
     {
+        $sort = $request->string('sort', 'employee')->toString();
+        $direction = strtolower($request->string('dir', 'asc')->toString()) === 'desc' ? 'desc' : 'asc';
+
+        $rows = Timesheet::desktopSynced()
+            ->with('employee.workInformation.department')
+            ->select('employee_id')
+            ->selectRaw('COUNT(*) as entries')
+            ->selectRaw('SUM(hours_spent) as total_hours')
+            ->selectRaw("SUM(CASE WHEN status = 'approved' THEN hours_spent ELSE 0 END) as approved_hours")
+            ->selectRaw("SUM(CASE WHEN is_billable = 1 THEN hours_spent ELSE 0 END) as billable_hours")
+            ->groupBy('employee_id')
+            ->get();
+
+        $sortable = ['employee', 'department', 'entries', 'total_hours', 'approved_hours', 'billable_hours'];
+        $sort = in_array($sort, $sortable, true) ? $sort : 'employee';
+
+        $rows = $direction === 'desc'
+            ? $rows->sortByDesc(fn ($row) => $this->employeeSortValue($row, $sort))->values()
+            : $rows->sortBy(fn ($row) => $this->employeeSortValue($row, $sort))->values();
+
         return view('timesheets.reports.employee-summary', [
-            'rows' => Timesheet::desktopSynced()
-                ->with('employee.workInformation.department')
-                ->select('employee_id')
-                ->selectRaw('COUNT(*) as entries')
-                ->selectRaw('SUM(hours_spent) as total_hours')
-                ->selectRaw("SUM(CASE WHEN status = 'approved' THEN hours_spent ELSE 0 END) as approved_hours")
-                ->selectRaw("SUM(CASE WHEN is_billable = 1 THEN hours_spent ELSE 0 END) as billable_hours")
-                ->groupBy('employee_id')
-                ->get(),
+            'rows' => $rows,
+            'sort' => $sort,
+            'direction' => $direction,
         ]);
     }
 
-    public function projectSummary(): View
+    public function projectSummary(Request $request): View
     {
+        $sort = $request->string('sort', 'project')->toString();
+        $direction = strtolower($request->string('dir', 'asc')->toString()) === 'desc' ? 'desc' : 'asc';
+
+        $projects = Project::with('tasks')
+            ->withSum(['timesheets' => fn ($query) => $query->desktopSynced()], 'hours_spent')
+            ->orderBy('name')
+            ->get();
+
+        $sortable = ['project', 'status', 'planned_hours', 'spent_hours', 'remaining', 'extra'];
+        $sort = in_array($sort, $sortable, true) ? $sort : 'project';
+
+        $projects = $direction === 'desc'
+            ? $projects->sortByDesc(fn ($project) => $this->projectSortValue($project, $sort))->values()
+            : $projects->sortBy(fn ($project) => $this->projectSortValue($project, $sort))->values();
+
         return view('timesheets.reports.project-summary', [
-            'projects' => Project::with('tasks')
-                ->withSum(['timesheets' => fn ($query) => $query->desktopSynced()], 'hours_spent')
-                ->orderBy('name')
-                ->get(),
+            'projects' => $projects,
+            'sort' => $sort,
+            'direction' => $direction,
         ]);
     }
 
@@ -175,6 +203,7 @@ class TimesheetController extends Controller
             'future_entry_limit_days' => ['required', 'integer', 'min:0'],
             'minimum_hours_per_entry' => ['required', 'numeric', 'min:0.01'],
             'maximum_hours_per_day' => ['required', 'numeric', 'min:1', 'max:24'],
+            'desktop_timer_timeout_seconds' => ['required', 'integer', 'min:1', 'max:86400'],
         ]);
 
         TimesheetSetting::firstOrCreate([])->update($data + [
@@ -326,6 +355,33 @@ class TimesheetController extends Controller
                 default => $row->employee?->full_name ?? 'No Employee',
             };
         });
+    }
+
+    private function employeeSortValue($row, string $sort): string|float|int
+    {
+        return match ($sort) {
+            'department' => strtolower((string) ($row->employee?->workInformation?->department?->name ?? '')),
+            'entries' => (int) $row->entries,
+            'total_hours' => (float) $row->total_hours,
+            'approved_hours' => (float) $row->approved_hours,
+            'billable_hours' => (float) $row->billable_hours,
+            default => strtolower((string) ($row->employee?->full_name ?? '')),
+        };
+    }
+
+    private function projectSortValue(Project $project, string $sort): string|float
+    {
+        $planned = (float) $project->tasks->sum(fn ($task) => (float) $task->planned_hours);
+        $spent = (float) $project->timesheets_sum_hours_spent;
+
+        return match ($sort) {
+            'status' => strtolower((string) $project->status),
+            'planned_hours' => $planned,
+            'spent_hours' => $spent,
+            'remaining' => max($planned - $spent, 0),
+            'extra' => max($spent - $planned, 0),
+            default => strtolower((string) $project->name),
+        };
     }
 
     private function assignmentPayload(array $employeeIds): array

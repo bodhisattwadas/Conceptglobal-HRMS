@@ -1,6 +1,14 @@
 @extends('layouts.app', ['heading' => 'Employee Dashboard', 'subheading' => $employee->full_name])
 
 @section('content')
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h4 mb-1">{{ $employee->full_name }}</h1>
+        <div class="text-secondary">{{ $employee->workInformation?->department?->name ?? 'Employee' }}</div>
+    </div>
+    <a href="{{ route('employee.profile.edit') }}" class="btn btn-outline-primary">Edit Profile</a>
+</div>
+
 <div class="row g-3 mb-4">
     <div class="col-md-4">
         <div class="card metric p-3">
