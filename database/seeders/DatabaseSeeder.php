@@ -16,7 +16,7 @@ class DatabaseSeeder extends Seeder
         User::query()->updateOrCreate(
             ['email' => 'admin@horilla.test'],
             [
-                'name' => 'Horilla Admin',
+                'name' => 'Concept Admin',
                 'password' => Hash::make('password'),
                 'access_level' => 'super_admin',
             ]
