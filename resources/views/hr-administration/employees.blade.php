@@ -29,11 +29,13 @@
                 @foreach ($employees as $employee)
                     <article class="hr-employee-card">
                         <div class="employee-photo">
-                            @if ($employee->profile_photo_url)
-                                <img src="{{ $employee->profile_photo_url }}" alt="{{ $employee->full_name }}">
-                            @else
-                                {{ $employee->initials }}
-                            @endif
+                            <a href="{{ route('employees.show', $employee) }}" class="employee-photo-link" aria-label="View {{ $employee->full_name }}">
+                                @if ($employee->profile_photo_url)
+                                    <img src="{{ $employee->profile_photo_url }}" alt="{{ $employee->full_name }}">
+                                @else
+                                    {{ $employee->initials }}
+                                @endif
+                            </a>
                         </div>
                         <div class="employee-copy">
                             <div class="employee-card-title"><a href="{{ route('employees.show', $employee) }}">{{ $employee->full_name }}</a><i @class(['status-dot', 'online' => $employee->full_name === 'Mitchell Admin'])></i></div>
@@ -95,6 +97,7 @@
             position: relative;
         }
         .employee-photo { background: #d8dde6; color: #fff; display: grid; font-size: 23px; font-weight: 700; place-items: center; }
+        .employee-photo-link { align-items: center; color: inherit; display: flex; height: 100%; justify-content: center; text-decoration: none; width: 100%; }
         .employee-photo img { height: 100%; object-fit: cover; width: 100%; }
         .employee-copy { font-size: 11px; line-height: 1.55; min-width: 0; padding: 7px 18px 7px 12px; }
         .employee-copy > div {

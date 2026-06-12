@@ -48,6 +48,8 @@ Route::patch('/employees/{employee}/archive', [EmployeeController::class, 'archi
 Route::patch('/employees/{employee}/restore', [EmployeeController::class, 'restore'])->name('employees.restore');
 Route::get('/employees/{employee}/documents/create', [EmployeeController::class, 'createDocument'])->name('employees.documents.create');
 Route::post('/employees/{employee}/documents', [EmployeeController::class, 'storeDocument'])->name('employees.documents.store');
+Route::get('/employees/{employee}/cv/download', [EmployeeController::class, 'downloadCv'])->name('employees.cv.download');
+Route::get('/employees/{employee}/documents/{documentIndex}/download', [EmployeeController::class, 'downloadDocument'])->name('employees.documents.download');
 Route::get('/employees/{employee}/timesheets', [EmployeeController::class, 'timesheets'])->name('employees.timesheets.index');
 Route::get('/loans', [LoanController::class, 'index'])->name('loans.index');
 Route::post('/loans/bulk-delete', [LoanController::class, 'bulkDelete'])->name('loans.bulk-delete');

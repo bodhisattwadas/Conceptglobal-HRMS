@@ -103,22 +103,16 @@ class EmployeeController extends Controller
     public function show(Employee $employee): View
     {
         $employee->load([
+            'user',
             'workInformation.company',
             'workInformation.department',
             'workInformation.jobPosition',
             'workInformation.reportingManager',
             'workInformation.coach',
-            'bankDetail',
         ]);
 
         return view('employees.show', [
             'employee' => $employee,
-            'smartButtons' => $this->smartButtons($employee),
-            'orgReports' => Employee::with('workInformation.jobPosition')
-                ->whereHas('workInformation', fn ($query) => $query->where('reporting_manager_id', $employee->id))
-                ->orderBy('first_name')
-                ->take(3)
-                ->get(),
         ]);
     }
 
@@ -148,10 +142,29 @@ class EmployeeController extends Controller
 
         if ($request->hasFile('attachment')) {
             $folder = $this->employeeFolder($employee).'/documents';
-            $request->file('attachment')->store($folder, 'public');
+            $this->storeNamedPublicFile($request->file('attachment'), $folder, $employee, $data['document_type'] ?? 'document');
         }
 
         return redirect()->route('employees.show', $employee)->with('status', 'Document draft saved.');
+    }
+
+    public function downloadDocument(Employee $employee, int $documentIndex)
+    {
+        $documents = collect($employee->related_document_paths ?? []);
+        $document = $documents->get($documentIndex);
+
+        abort_unless(is_array($document) && ! empty($document['path']), 404);
+
+        $downloadName = $document['download_name'] ?? basename((string) $document['path']);
+
+        return Storage::disk('public')->download($document['path'], $downloadName);
+    }
+
+    public function downloadCv(Employee $employee)
+    {
+        abort_unless($employee->cv_file_path, 404);
+
+        return Storage::disk('public')->download($employee->cv_file_path, basename($employee->cv_file_path));
     }
 
     public function timesheets(Employee $employee): View
@@ -441,19 +454,6 @@ class EmployeeController extends Controller
         }
     }
 
-    private function smartButtons(Employee $employee): array
-    {
-        return [
-            ['label' => 'Not Connected', 'value' => '', 'icon' => 'bi-circle-fill'],
-            ['label' => 'Contracts', 'value' => 0, 'icon' => 'bi-file-earmark-text'],
-            ['label' => 'Time Off', 'value' => '0/0 Days', 'icon' => 'bi-calendar2-week'],
-            ['label' => 'Documents', 'value' => 0, 'icon' => 'bi-list-ol', 'url' => route('employees.documents.create', $employee)],
-            ['label' => 'Payslips', 'value' => 2, 'icon' => 'bi-credit-card'],
-            ['label' => 'Timesheets', 'value' => '', 'icon' => 'bi-calendar3', 'url' => route('employees.timesheets.index', $employee)],
-            ['label' => 'Loans', 'value' => 0, 'icon' => 'bi-bank'],
-        ];
-    }
-
     private function attachUploads(Request $request, array &$employeePayload, ?Employee $existing): void
     {
         if (! $existing) {
@@ -482,6 +482,7 @@ class EmployeeController extends Controller
             $employeePayload['cv_file_path'] = $this->storeNamedPublicFile(
                 $request->file('cv_file'),
                 $baseFolder.'/cv',
+                $existing,
                 'cv'
             );
         }
@@ -494,12 +495,14 @@ class EmployeeController extends Controller
             foreach ($request->file('related_documents', []) as $index => $file) {
                 if ($file) {
                     $type = trim((string) ($documentTypes[$index] ?? ''));
-                    $path = $this->storeNamedPublicFile($file, $baseFolder.'/related-documents', $type ?: 'document');
+                    $path = $this->storeNamedPublicFile($file, $baseFolder.'/related-documents', $existing, $type ?: 'document');
+                    $downloadName = basename($path);
 
                     $newDocs[] = [
                         'type' => $type ?: 'Document',
                         'name' => $file->getClientOriginalName(),
                         'path' => $path,
+                        'download_name' => $downloadName,
                         'uploaded_at' => now()->toDateTimeString(),
                     ];
                 }
@@ -549,12 +552,15 @@ class EmployeeController extends Controller
         return $settings->employee_document_types ?: MasterSetting::DEFAULT_EMPLOYEE_DOCUMENT_TYPES;
     }
 
-    private function storeNamedPublicFile($file, string $folder, string $fallbackName): string
+    private function storeNamedPublicFile($file, string $folder, Employee $employee, string $fallbackName): string
     {
         $extension = $file->extension() ?: $file->getClientOriginalExtension();
-        $name = Str::slug(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME)) ?: Str::slug($fallbackName);
+        $employeeName = str_replace(' ', '_', trim($employee->full_name)) ?: 'Employee';
+        $documentType = str_replace(' ', '_', trim($fallbackName)) ?: 'document';
+        $timestamp = now()->format('YmdHis');
+        $filename = $employeeName.'-'.$documentType.'-'.$timestamp.'.'.$extension;
 
-        return $file->storeAs($folder, $name.'-'.now()->format('YmdHis').'.'.$extension, 'public');
+        return $file->storeAs($folder, $filename, 'public');
     }
 
     public function view(Request $request, string $view): View

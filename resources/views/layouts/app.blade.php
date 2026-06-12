@@ -151,7 +151,7 @@
         </div>
         <div class="sidebar-user-tools">
             <span class="app-user-chip">
-                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face" alt="Mitchell Admin" width="28" height="28" class="rounded-circle">
+                <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=64&h=64&fit=crop&crop=face" alt="Concept Admin" width="28" height="28" class="rounded-circle">
                 {{ auth()->user()?->name ?? 'User' }}
             </span>
         </div>

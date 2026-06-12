@@ -92,6 +92,10 @@
     </li>
 </ul>
 
+<div class="tab-help text-muted small mt-2 mb-2">
+    Use these sections to edit the same employee details shown on the profile page.
+</div>
+
 <div class="tab-content border border-top-0 p-3 bg-white">
     <div class="tab-pane fade show active" id="work-info">
         <div class="row g-3">
@@ -321,35 +325,47 @@
                 <div class="form-text">Upload documents one by one. Allowed: PDF, DOC, DOCX, PNG, JPG, JPEG. Max 10 MB each.</div>
             </div>
 
+            <div class="col-12">
+                <div class="fw-semibold mb-2">Uploaded Documents</div>
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>File</th>
+                                <th>Uploaded</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($relatedDocs as $doc)
+                                <tr>
+                                    <td>{{ $doc['type'] ?? 'Document' }}</td>
+                                    <td>
+                                        {{ $doc['name'] ?? ( !empty($doc['path']) ? basename($doc['path']) : '-' ) }}
+                                    </td>
+                                    <td>{{ $doc['uploaded_at'] ?? '-' }}</td>
+                                    <td>
+                                        @if(!empty($doc['path']))
+                                            <a href="{{ route('employees.documents.download', [$employee, $loop->index]) }}" class="btn btn-sm btn-outline-primary">Download</a>
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="text-muted">No uploaded documents found.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             @if($relatedDocs->isNotEmpty())
                 <div class="col-12">
-                    <div class="fw-semibold mb-2">Current Documents</div>
-                    <div class="table-responsive">
-                        <table class="table table-sm align-middle">
-                            <thead>
-                                <tr>
-                                    <th>Type</th>
-                                    <th>File</th>
-                                    <th>Uploaded</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($relatedDocs as $doc)
-                                    <tr>
-                                        <td>{{ $doc['type'] ?? 'Document' }}</td>
-                                        <td>
-                                            @if(!empty($doc['path']))
-                                                <a href="{{ \Illuminate\Support\Facades\Storage::url($doc['path']) }}" target="_blank">{{ $doc['name'] ?? basename($doc['path']) }}</a>
-                                            @else
-                                                {{ $doc['name'] ?? '-' }}
-                                            @endif
-                                        </td>
-                                        <td>{{ $doc['uploaded_at'] ?? '-' }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                    <div class="form-text">New uploads are appended to the employee document list when you save.</div>
                 </div>
             @endif
         </div>

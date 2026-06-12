@@ -11,7 +11,7 @@
     <form method="post" action="{{ route('login.store') }}" class="card border-0 shadow-sm" style="width: min(420px, 100%);">
         @csrf
         <div class="card-body p-4">
-            <h1 class="h4 mb-1">Horilla HRMS</h1>
+            <h1 class="h4 mb-1">Concept HRMS</h1>
             <p class="text-secondary mb-4">Sign in to continue.</p>
 
             @if ($errors->any())

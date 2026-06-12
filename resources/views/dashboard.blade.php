@@ -1,6 +1,6 @@
 @extends('layouts.app', [
     'heading' => 'Dashboard',
-    'subheading' => 'The first Laravel build slice for Horilla HRMS',
+    'subheading' => 'Concept HRMS',
 ])
 
 @section('content')
